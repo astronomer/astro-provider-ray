@@ -11,7 +11,7 @@ from airflow.utils.types import NOTSET
 from airflow.decorators.base import DecoratedOperator, task_decorator_factory, TaskDecorator
 from airflow.utils.context import Context
 from airflow.exceptions import AirflowException
-from include.providers.operators.kuberay import SubmitRayJob
+from ray_provider.operators.kuberay import SubmitRayJob
 
 if TYPE_CHECKING:
     from airflow.utils.context import Context

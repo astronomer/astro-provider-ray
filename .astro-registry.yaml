@@ -5,11 +5,11 @@ display-name: Kuberay
 docs-url: https://github.com/astronomer/airflow-provider-kuberay/blob/main/README.md
 
 decorators:
-  - module: ray.decorators.kuberay.ray_task
+  - module: ray_provider.decorators.kuberay.ray_task
 
 operators:
-  - module: ray.operators.kuberay.RayClusterOperator
-  - module: ray.operators.kuberay.SubmitRayJob
+  - module: ray_provider.operators.kuberay.RayClusterOperator
+  - module: ray_provider.operators.kuberay.SubmitRayJob
 
 triggers:
-  - module: ray.triggers.kuberay.RayJobTrigger
+  - module: ray_provider.triggers.kuberay.RayJobTrigger

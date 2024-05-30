@@ -23,7 +23,7 @@ from kubernetes import client, config, utils
 from kubernetes.client.rest import ApiException
 from kubernetes.client.api_client import ApiClient
 from kubernetes.dynamic import DynamicClient
-from include.providers.triggers.kuberay import RayJobTrigger
+from ray_provider.triggers.kuberay import RayJobTrigger
 from ray.job_submission import JobSubmissionClient, JobStatus
 from typing import TYPE_CHECKING, Container, Sequence, cast
 
