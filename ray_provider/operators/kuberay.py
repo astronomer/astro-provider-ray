@@ -202,8 +202,7 @@ class RayClusterOperator(BaseOperator):
                     namespace=namespace,
                     body=body
                 )
-                print(f"{kind} created. Response:")
-                print(json.dumps(api_response.to_dict(), indent=2))
+                print(f"{kind} created.")
             else:
                 # Create custom object
                 api_response = api_instance.create_namespaced_custom_object(
@@ -213,111 +212,12 @@ class RayClusterOperator(BaseOperator):
                     plural=plural,
                     body=body
                 )
-                print(f"{kind} created. Response:")
-                print(json.dumps(api_response, indent=2))
+                print(f"{kind} created.")
         except client.exceptions.ApiException as e:
             print(f"Exception when creating {kind}: {e}\n")
         except ValueError as e:
             print(e)
 
-    """def create_ray_cluster_(self, yaml_file_path):
-        # Load kubeconfig
-        config.load_kube_config(self.kubeconfig)
-
-        # Create API client
-        api_instance = client.CustomObjectsApi()
-
-        # Load RayCluster YAML
-        with open(yaml_file_path, "r") as f:
-            ray_cluster_yaml = yaml.safe_load(f)
-
-        # Extract necessary fields from the YAML
-        api_version = ray_cluster_yaml.get('apiVersion')
-        group, version = api_version.split('/')  # e.g., 'ray.io', 'v1alpha1'
-        namespace = ray_cluster_yaml.get('metadata', {}).get('namespace', self.ray_namespace)  # default to 'default' if not specified
-        plural = 'rayclusters'  # This is typically known and constant
-
-        body = ray_cluster_yaml  # dict | the JSON schema of the Resource to create
-
-        try:
-            api_response = api_instance.create_namespaced_custom_object(
-                group, version, namespace, plural, body)
-            # Print the API response in a readable JSON format
-            print("RayCluster created. Response:")
-            print(json.dumps(api_response, indent=2))
-        except ApiException as e:
-            print("Exception when creating RayCluster: %s\n" % e)
-    
-    def create_ray_cluster(self, env: dict):
-
-        command = f"kubectl apply -f {self.ray_cluster_yaml} -n {self.ray_namespace}"
-        
-        result = self.execute_bash_command(command, env)
-        self.log.info(result)
-        return result
-    
-    def add_nvidia_device(self,env: dict):
-
-        command = "kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml"
-
-        result = self.execute_bash_command(command,env)
-        self.log.info(result)
-        return result
-    
-    def create_k8_service(self, namespace: str ="default", yaml_file: str ="ray-head-service.yaml"):
-
-        self.log.info("Creating service with yaml file: "+ yaml_file)
-
-        config.load_kube_config(self.kubeconfig)
-
-        with open(yaml_file) as f:
-            service_data = yaml.safe_load(f)
-
-        v1 = client.CoreV1Api()
-        created_service = v1.create_namespaced_service(namespace=namespace, body=service_data)
-        self.log.info(f"Service {created_service.metadata.name} created. Waiting for an external DNS name...")
-
-        max_retries = 30
-        retry_interval = 40
-
-        external_dns = None
-
-        for attempt in range(max_retries):
-            self.log.info(f"Attempt {attempt + 1}: Checking for service's external DNS name...")
-            service = v1.read_namespaced_service(name=created_service.metadata.name, namespace=namespace)
-            
-            if service.status.load_balancer.ingress and service.status.load_balancer.ingress[0].hostname:
-                external_dns = service.status.load_balancer.ingress[0].hostname
-                self.log.info(f"External DNS name found: {external_dns}")
-                break
-            else:
-                self.log.info("External DNS name not yet available, waiting...")
-                time.sleep(retry_interval)
-
-        if not external_dns:
-            self.log.error("Failed to find the external DNS name for the created service within the expected time.")
-            return None
-        
-        # Wait for the endpoints to be ready
-        for attempt in range(max_retries):
-            endpoints = v1.read_namespaced_endpoints(name=created_service.metadata.name, namespace=namespace)
-            if endpoints.subsets and all([subset.addresses for subset in endpoints.subsets]):
-                self.log.info("All associated pods are ready.")
-                break
-            else:
-                self.log.info(f"Pods not ready, waiting... (Attempt {attempt + 1})")
-                time.sleep(retry_interval)
-        else:
-            self.log.error("Pods failed to become ready within the expected time.")
-            raise AirflowException("Pods failed to become ready within the expected time.")
-
-        # Assuming all ports in the service need to be accessed
-        urls = {port.name: f"http://{external_dns}:{port.port}" for port in service.spec.ports}
-        for port_name, url in urls.items():
-            self.log.info(f"Service URL for {port_name}: {url}")
-
-        return urls"""
-    
     def create_k8_service(self, namespace: str = "default", yaml_file: str = "ray-head-service.yaml"):
         self.log.info("Creating service with yaml file: " + yaml_file)
         config.load_kube_config(self.kubeconfig)
