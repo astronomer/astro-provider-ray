@@ -6,15 +6,14 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "airflow-provider-sample"
+name = "airflow-provider-anyscale"
 authors = [
-    { name = "Pete DeJoy", email = "pete@astronomer.io" },
-    { name = "Josh Fell", email = "josh.d.fell@astronomer.io" },
+    { name = "Venkata Jagannath", email = "venkat@astronomer.io" },
     { name = "Astronomer", email = "humans@astronomer.io" },
 
 ]
 license = { text = "Apache License 2.0" }
-description = "A sample Apache Airflow provider package built by Astronomer."
+description = "An Apache Airflow provider package built by Astronomer to integrate with Anyscale."
 classifiers = [
     "Framework :: Apache Airflow",
     "Framework :: Apache Airflow :: Provider",
@@ -24,28 +23,55 @@ dynamic = [
 ]
 requires-python = "~=3.8"
 dependencies = [
-    "apache-airflow>=2.4"
+    "apache-airflow>=2.9"
 ]
 
 [project.urls]
 Homepage = "https://astronomer.io"
-Source = "https://github.com/astronomer/airflow-provider-sample/"
+Source = "https://github.com/astronomer/airflow-provider-kuberay/"
 
 [project.readme]
 file = "README.md"
 content-type = "text/markdown"
 
 [project.entry-points.apache_airflow_provider]
-provider_info = "sample_provider.__init__:get_provider_info"
+provider_info = "ray.__init__:get_provider_info"
 
 [tool.setuptools]
 include-package-data = false
 
 [tool.setuptools.dynamic]
-version = { attr = "sample_provider.__version__" }
+version = { attr = "ray.__version__" }
 
 [tool.setuptools.packages.find]
 exclude = [
     "*tests.*",
     "*tests"
 ]
+
+######################################
+# THIRD PARTY TOOLS
+######################################
+[tool.black]
+line-length = 120
+target-version = ['py37', 'py38', 'py39', 'py310']
+
+[tool.isort]
+profile = "black"
+known_third_party = ["airflow", "jinja2"]
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+no_warn_unused_ignores = true
+
+[tool.ruff]
+line-length = 120
+[tool.ruff.lint]
+select = ["C901", "I", "F"]
+ignore = ["F541"]
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.distutils.bdist_wheel]
+universal = true
