@@ -20,7 +20,7 @@ class RayJobTrigger(BaseTrigger):
         self.poll_interval = poll_interval
 
     def serialize(self) -> tuple[str, dict[str, Any]]:
-        return ("include.providers.triggers.kuberay.RayJobTrigger", {
+        return ("ray_provider.triggers.kuberay.RayJobTrigger", {
             "job_id": self.job_id,
             "host": self.host,
             "end_time": self.end_time,
