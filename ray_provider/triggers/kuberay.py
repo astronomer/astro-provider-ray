@@ -18,8 +18,6 @@ class RayJobTrigger(BaseTrigger):
         self.end_time = end_time
         self.poll_interval = poll_interval
 
-        #print("::group::RayJobTriggerLogs")
-
     def serialize(self) -> tuple[str, dict[str, Any]]:
         return ("ray_provider.triggers.kuberay.RayJobTrigger", {
             "job_id": self.job_id,
