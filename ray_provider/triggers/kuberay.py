@@ -84,7 +84,6 @@ class RayJobTrigger(BaseTrigger):
             yield TriggerEvent({"status": "error", "message": str(e), "job_id": self.job_id})
         
     def get_current_status(self, client: JobSubmissionClient) -> bool:
-
         job_status = client.get_job_status(self.job_id)
         self.log.info(f"Current job status for {self.job_id} is: {job_status}")
         return job_status in (JobStatus.RUNNING,JobStatus.PENDING)
