@@ -47,8 +47,8 @@ class RayJobTrigger(BaseTrigger):
                     return
                 
             # Stream logs if available
-            async for multi_line in client.tail_job_logs(self.job_id):
-                self.log.info(multi_line)
+            #async for multi_line in client.tail_job_logs(self.job_id):
+            #    self.log.info(multi_line)
 
                 await asyncio.sleep(self.poll_interval)
             self.log.info(f"Job {self.job_id} completed execution before the timeout period...")

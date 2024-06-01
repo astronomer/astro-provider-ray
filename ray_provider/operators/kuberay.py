@@ -396,6 +396,11 @@ class SubmitRayJob(BaseOperator):
     
     def execute_complete(self, context: Context, event: Any = None) -> None:
 
+        # Get logs
+        logs = self.client.get_job_logs(self.job_id)
+        for log in logs.split("\n"):
+                self.log.info(log)
+
         if event["status"] == "error" or event["status"] == "cancelled":
             self.log.info(f"Ray job {self.job_id} execution not completed...")
             raise AirflowException(event["message"])
