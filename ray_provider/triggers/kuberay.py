@@ -1,11 +1,10 @@
 from __future__ import annotations
 import asyncio
-import time
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any, AsyncIterator
 from airflow.triggers.base import BaseTrigger, TriggerEvent
 from airflow.exceptions import AirflowException
 from ray.dashboard.modules.job.sdk import JobSubmissionClient, JobStatus
+import time
 
 class RayJobTrigger(BaseTrigger):
     def __init__(self,
@@ -18,6 +17,8 @@ class RayJobTrigger(BaseTrigger):
         self.host = host
         self.end_time = end_time
         self.poll_interval = poll_interval
+
+        #print("::group::RayJobTriggerLogs")
 
     def serialize(self) -> tuple[str, dict[str, Any]]:
         return ("ray_provider.triggers.kuberay.RayJobTrigger", {
@@ -35,75 +36,56 @@ class RayJobTrigger(BaseTrigger):
             self.log.info(f"Polling for job {self.job_id} every {self.poll_interval} seconds...")
             client = JobSubmissionClient(f"{self.host}")
 
-            with ThreadPoolExecutor() as executor:
-                loop = asyncio.get_event_loop()
-
-                while self.get_current_status(client=client):
-                    if self.end_time < time.time():
-                        yield TriggerEvent(
-                            {
-                                "status": "error",
-                                "message": f"Job run {self.job_id} has not reached a terminal status after "
-                                           f"{self.end_time} seconds.",
-                                "job_id": self.job_id,
-                            }
-                        )
-                        return
-
-                    # Stream logs if available using a separate thread
-                    await loop.run_in_executor(executor, self.stream_logs, client)
-
-                    await asyncio.sleep(self.poll_interval)
-
-                self.log.info(f"Job {self.job_id} completed execution before the timeout period...")
-
-                completed_status = client.get_job_status(self.job_id)
-                self.log.info(f"Status of completed job {self.job_id} is: {completed_status}")
-                if completed_status == JobStatus.SUCCEEDED:
-                    yield TriggerEvent(
-                        {
-                            "status": "success",
-                            "message": f"Job run {self.job_id} has completed successfully.",
-                            "job_id": self.job_id,
-                        }
-                    )
-                elif completed_status == JobStatus.STOPPED:
-                    yield TriggerEvent(
-                        {
-                            "status": "cancelled",
-                            "message": f"Job run {self.job_id} has been stopped.",
-                            "job_id": self.job_id,
-                        }
-                    )
-                else:
+            while self.get_current_status(client=client):
+                if self.end_time < time.time():
                     yield TriggerEvent(
                         {
                             "status": "error",
-                            "message": f"Job run {self.job_id} has failed.",
+                            "message": f"Job run {self.job_id} has not reached a terminal status after "
+                            f"{self.end_time} seconds.",
                             "job_id": self.job_id,
                         }
                     )
+                    return
+                
+                # Stream logs if available
+                async for multi_line in client.tail_job_logs(self.job_id):
+                    self.log.info(multi_line)
+
+                await asyncio.sleep(self.poll_interval)
+            self.log.info(f"Job {self.job_id} completed execution before the timeout period...")
+            
+            completed_status = client.get_job_status(self.job_id)
+            self.log.info(f"Status of completed job {self.job_id} is: {completed_status}")
+            if completed_status == JobStatus.SUCCEEDED:
+                yield TriggerEvent(
+                    {
+                        "status": "success",
+                        "message": f"Job run {self.job_id} has completed successfully.",
+                        "job_id": self.job_id,
+                    }
+                )
+            elif completed_status == JobStatus.STOPPED:
+                yield TriggerEvent(
+                    {
+                        "status": "cancelled",
+                        "message": f"Job run {self.job_id} has been stopped.",
+                        "job_id": self.job_id,
+                    }
+                )
+            else:
+                yield TriggerEvent(
+                    {
+                        "status": "error",
+                        "message": f"Job run {self.job_id} has failed.",
+                        "job_id": self.job_id,
+                    }
+                )
         except Exception as e:
             yield TriggerEvent({"status": "error", "message": str(e), "job_id": self.job_id})
-
-    def stream_logs(self, client):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(self._async_stream_logs(client))
-        except Exception as e:
-            self.log.error(f"Error streaming logs: {str(e)}")
-        finally:
-            loop.close()
-
-    async def _async_stream_logs(self, client):
-        try:
-            async for multi_line in client.tail_job_logs(self.job_id):
-                self.log.info(multi_line)
-        except Exception as e:
-            self.log.error(f"Error streaming logs: {str(e)}")
-
+        
     def get_current_status(self, client: JobSubmissionClient) -> bool:
+
         job_status = client.get_job_status(self.job_id)
         self.log.info(f"Current job status for {self.job_id} is: {job_status}")
-        return job_status in (JobStatus.RUNNING, JobStatus.PENDING)
+        return job_status in (JobStatus.RUNNING,JobStatus.PENDING)
