@@ -26,7 +26,8 @@ dependencies = [
     "apache-airflow>=2.9",
     "ray[default]",
     "kubernetes",
-    "requests"
+    "requests",
+    "pytest-asyncio"
 ]
 
 [project.urls]

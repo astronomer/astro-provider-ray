@@ -37,6 +37,11 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         self.config = config
         self.node_group = node_group
 
+        if isinstance(self.num_cpus, str):
+            raise TypeError("num_cpus should be an integer or float value")
+        if isinstance(self.num_gpus, str):
+            raise TypeError("num_gpus should be an integer or float value")
+
         # Ensuring we pass all necessary initialization parameters to the superclass
         super().__init__(
             host=self.host,
