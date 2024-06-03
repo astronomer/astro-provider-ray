@@ -2,7 +2,6 @@ from __future__ import annotations
 import asyncio
 from typing import Any, AsyncIterator
 from airflow.triggers.base import BaseTrigger, TriggerEvent
-from airflow.exceptions import AirflowException
 from ray.dashboard.modules.job.sdk import JobSubmissionClient, JobStatus
 import time
 
@@ -18,10 +17,8 @@ class RayJobTrigger(BaseTrigger):
         self.end_time = end_time
         self.poll_interval = poll_interval
 
-        #print("::group::RayJobTriggerLogs")
-
     def serialize(self) -> tuple[str, dict[str, Any]]:
-        return ("include.providers.triggers.kuberay.RayJobTrigger", {
+        return ("ray_provider.triggers.kuberay.RayJobTrigger", {
             "job_id": self.job_id,
             "host": self.host,
             "end_time": self.end_time,
@@ -47,12 +44,13 @@ class RayJobTrigger(BaseTrigger):
                         }
                     )
                     return
-                
-                # Stream logs if available
-                async for multi_line in client.tail_job_logs(self.job_id):
-                    self.log.info(multi_line)
-
                 await asyncio.sleep(self.poll_interval)
+
+            # Stream logs if available
+            async for multi_line in client.tail_job_logs(self.job_id):
+                self.log.info(multi_line)
+
+
             self.log.info(f"Job {self.job_id} completed execution before the timeout period...")
             
             completed_status = client.get_job_status(self.job_id)
@@ -85,12 +83,6 @@ class RayJobTrigger(BaseTrigger):
             yield TriggerEvent({"status": "error", "message": str(e), "job_id": self.job_id})
         
     def get_current_status(self, client: JobSubmissionClient) -> bool:
-
         job_status = client.get_job_status(self.job_id)
         self.log.info(f"Current job status for {self.job_id} is: {job_status}")
-        if job_status in (JobStatus.RUNNING,JobStatus.PENDING):
-            return True
-        else:
-            return False
-
-
+        return job_status in (JobStatus.RUNNING,JobStatus.PENDING)

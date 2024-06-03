@@ -81,7 +81,7 @@ repos:
             types-python-dateutil,
             apache-airflow,
           ]
-        files: ^ray
+        files: ^ray_provider
 
 ci:
   autofix_commit_msg: 🎨 [pre-commit.ci] Auto format from pre-commit.com hooks

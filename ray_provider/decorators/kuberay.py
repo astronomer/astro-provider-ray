@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import os
-import uuid
 import textwrap
 import shutil
 from tempfile import mkdtemp
 from typing import TYPE_CHECKING, Callable, Sequence
-from tempfile import TemporaryDirectory
 from airflow.utils.types import NOTSET
 from airflow.decorators.base import DecoratedOperator, task_decorator_factory, TaskDecorator
 from airflow.utils.context import Context
 from airflow.exceptions import AirflowException
-from include.providers.operators.kuberay import SubmitRayJob
+from ray_provider.operators.kuberay import SubmitRayJob
 
 if TYPE_CHECKING:
     from airflow.utils.context import Context
@@ -36,6 +34,11 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         self.memory = config.get('memory')
         self.config = config
         self.node_group = node_group
+
+        if isinstance(self.num_cpus, str):
+            raise TypeError("num_cpus should be an integer or float value")
+        if isinstance(self.num_gpus, str):
+            raise TypeError("num_gpus should be an integer or float value")
 
         # Ensuring we pass all necessary initialization parameters to the superclass
         super().__init__(

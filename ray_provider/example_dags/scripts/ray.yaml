@@ -1,0 +1,73 @@
+apiVersion: ray.io/v1alpha1
+kind: RayCluster
+metadata:
+  name: raycluster-complete
+spec:
+  rayVersion: "2.10.0"
+  enableInTreeAutoscaling: true
+  headGroupSpec:
+    serviceType: ClusterIP
+    rayStartParams:
+      dashboard-host: "0.0.0.0"
+      block: "true"
+    template:
+      metadata:
+        labels:
+          ray-node-type: head
+      spec:
+        containers:
+        - name: ray-head
+          image: rayproject/ray-ml:latest
+          env:  # Environment variables section starts here
+          - name: RAY_GRAFANA_IFRAME_HOST
+            value: "http://127.0.0.1:3000"
+          - name: RAY_GRAFANA_HOST
+            value: "http://prometheus-grafana.prometheus-system.svc:80"
+          - name: RAY_PROMETHEUS_HOST
+            value: "http://prometheus-kube-prometheus-prometheus.prometheus-system.svc:9090"
+          resources:
+            limits:
+              cpu: 4
+              memory: 8Gi
+            requests:
+              cpu: 4
+              memory: 8Gi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","ray stop"]
+          ports:
+          - containerPort: 6379
+            name: gcs
+          - containerPort: 8265
+            name: dashboard
+          - containerPort: 10001
+            name: client
+          - containerPort: 8000
+            name: serve
+          - containerPort: 8080
+            name: metrics
+          - containerPort: 44217
+            name: as-metrics # autoscaler
+          - containerPort: 44227
+            name: dash-metrics # dashboard
+  workerGroupSpecs:
+  - groupName: small-group
+    replicas: 2
+    minReplicas: 2
+    maxReplicas: 5
+    rayStartParams:
+      block: "true"
+    template:
+      metadata:
+      spec:
+        containers:
+        - name: machine-learning
+          image: rayproject/ray-ml:latest
+          resources:
+            limits:
+              cpu: 2
+              memory: 4Gi
+            requests:
+              cpu: 2
+              memory: 4Gi

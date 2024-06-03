@@ -1,0 +1,61 @@
+apiVersion: ray.io/v1alpha1
+kind: RayCluster
+metadata:
+  name: raycluster-complete
+spec:
+  rayVersion: "2.10.0"
+  enableInTreeAutoscaling: true
+  headGroupSpec:
+    serviceType: ClusterIP
+    rayStartParams:
+      dashboard-host: "0.0.0.0"
+      block: "true"
+    template:
+      metadata:
+        labels:
+          ray-node-type: head
+      spec:
+        containers:
+        - name: ray-head
+          image: rayproject/ray-ml:latest
+          resources:
+            limits:
+              cpu: 4
+              memory: 8Gi
+            requests:
+              cpu: 4
+              memory: 8Gi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","ray stop"]
+          ports:
+          - containerPort: 6379
+            name: gcs
+          - containerPort: 8265
+            name: dashboard
+          - containerPort: 10001
+            name: client
+          - containerPort: 8000
+            name: serve
+  workerGroupSpecs:
+  - groupName: small-group
+    replicas: 2
+    minReplicas: 2
+    maxReplicas: 5
+    rayStartParams:
+      block: "true"
+    template:
+      metadata:
+      spec:
+        containers:
+        - name: machine-learning
+          image: rayproject/ray-ml:latest
+          resources:
+            limits:
+              cpu: 2
+              memory: 4Gi
+              nvidia.com/gpu: 1  # Allocate 1 GPU to each worker node
+            requests:
+              cpu: 2
+              memory: 4Gi
