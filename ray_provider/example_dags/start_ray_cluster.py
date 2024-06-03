@@ -1,21 +1,8 @@
 
-from airflow import DAG
-from ray_provider.operators.kuberay import RayClusterOperator,SubmitRayJob
-from datetime import datetime, timedelta
 import os
-
-from airflow.models.connection import Connection
-
-# Define the AWS connection
-conn = Connection(
-    conn_id="aws_conn",
-    conn_type="aws",
-    extra={
-        "config_kwargs": {
-            "signature_version": "unsigned",
-        },
-    },
-)
+from airflow import DAG
+from datetime import datetime, timedelta
+from ray_provider.operators.kuberay import RayClusterOperator,SubmitRayJob
 
 default_args = {
     'owner': 'airflow',
