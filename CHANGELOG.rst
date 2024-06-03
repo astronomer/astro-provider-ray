@@ -1,22 +1,22 @@
 CHANGELOG
 =========
 
-1.0.0 (2024-05-29)
+1.0.0 (2024-06-03)
 ------------------
 
-* Initial release, with the following hooks, operators, and triggers:
+* Initial release, with the following decorators, operators, and triggers:
 
 .. list-table::
    :header-rows: 1
 
-   * - Hook Class
+   * - Decorator Class
      - Import Path
      - Example DAG
 
-   * - ``AnyscaleHook``
+   * - ``_RayDecoratedOperator``
      - .. code-block:: python
 
-        from anyscale_provider.hooks.anyscale import AnyscaleHook
+        from ray_provider.decorators.kuberay import ray_task
      - N/A
 
 .. list-table::
@@ -26,16 +26,16 @@ CHANGELOG
      - Import Path
      - Example DAG
 
-   * - ``AnyscaleSubmitJob``
+   * - ``RayClusterOperator``
      - .. code-block:: python
 
-        from anyscale_provider.operators.anyscale import AnyscaleSubmitJob
+        from ray_provider.operators.kuberay import RayClusterOperator
      - Example DAG
 
-   * - ``AnyscaleDeployService``
+   * - ``SubmitRayJob``
      - .. code-block:: python
 
-        from anyscale_provider.operators.anyscale import RolloutAnyscaleService
+        from ray_provider.operators.kuberay import SubmitRayJob
      - Example DAG
 
 .. list-table::
@@ -45,14 +45,8 @@ CHANGELOG
      - Import Path
      - Example DAG
 
-   * - ``AnyscaleJobTrigger``
+   * - ``RayJobTrigger``
      - .. code-block:: python
 
-        from anyscale_provider.triggers.anyscale import AnyscaleJobTrigger
-     - N/A
-
-   * - ``AnyscaleServiceTrigger``
-     - .. code-block:: python
-
-        from anyscale_provider.triggers.anyscale import AnyscaleServiceTrigger
+        from ray_provider.triggers.kuberay import RayJobTrigger
      - N/A
