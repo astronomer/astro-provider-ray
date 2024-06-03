@@ -7,6 +7,7 @@ import tempfile
 import time
 import yaml
 import requests
+from typing import Any
 
 from airflow.exceptions import AirflowException
 from airflow.hooks.subprocess import SubprocessHook
