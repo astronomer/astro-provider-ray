@@ -2,7 +2,6 @@ from __future__ import annotations
 import asyncio
 from typing import Any, AsyncIterator
 from airflow.triggers.base import BaseTrigger, TriggerEvent
-from airflow.exceptions import AirflowException
 from ray.dashboard.modules.job.sdk import JobSubmissionClient, JobStatus
 import time
 

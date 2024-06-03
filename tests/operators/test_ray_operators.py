@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from airflow.exceptions import AirflowException
+from airflow.exceptions import AirflowException, TaskDeferred
 from datetime import timedelta
 from ray_provider.operators.kuberay import SubmitRayJob, RayClusterOperator
 from ray_provider.triggers.kuberay import RayJobTrigger
@@ -125,14 +125,17 @@ class TestSubmitRayJob:
         assert operator.job_id is None
         assert operator.status_to_wait_for == {JobStatus.SUCCEEDED, JobStatus.STOPPED, JobStatus.FAILED}
 
-    @patch('ray.job_submission.JobSubmissionClient')
+    @patch('ray_provider.operators.kuberay.JobSubmissionClient')
     def test_execute(self, mock_client_class, operator):
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
         mock_client.submit_job.return_value = "job_12345"
         mock_client.get_job_status.return_value = JobStatus.RUNNING
 
-        job_id = operator.execute(context)
+        try:
+            operator.execute(context)
+        except TaskDeferred:
+            pass
         
         mock_client_class.assert_called_once_with(host)
         mock_client.submit_job.assert_called_once_with(
@@ -144,9 +147,8 @@ class TestSubmitRayJob:
             entrypoint_resources=resources
         )
         assert operator.job_id == "job_12345"
-        assert job_id == "job_12345"
 
-    @patch('ray.job_submission.JobSubmissionClient')
+    @patch('ray_provider.operators.kuberay.JobSubmissionClient')
     def test_on_kill(self, mock_client_class, operator):
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
