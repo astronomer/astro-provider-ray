@@ -6,7 +6,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "airflow-provider-kuberay"
+name = "astro-provider-ray"
 authors = [
     { name = "Venkata Jagannath", email = "venkat@astronomer.io" },
     { name = "Astronomer", email = "humans@astronomer.io" },
@@ -32,7 +32,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://astronomer.io"
-Source = "https://github.com/astronomer/airflow-provider-kuberay/"
+Source = "https://github.com/astronomer/astro-provider-ray/"
 
 [project.readme]
 file = "README.md"

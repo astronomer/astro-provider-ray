@@ -16,7 +16,7 @@ report a bug, open an issue! We'd love all and any contributions. If you have qu
 We'd also love PRs. If you're thinking of a large PR, we advise opening up an issue first to talk about it,
 though! Look at the links below if you're not sure how to open a PR.
 
-If you have other questions, use `Github Discussions <https://github.com/astronomer/airflow-provider-kuberay/discussions/>`_
+If you have other questions, use `Github Discussions <https://github.com/astronomer/astro-provider-ray/discussions/>`_
 
 
 Prepare PR
@@ -28,7 +28,7 @@ Prepare PR
      `How to sync your fork <#how-to-sync-your-fork>`_ for details.
 
    * Create a local branch for your development. Make sure to use latest
-     ``airflow-provider-kuberay/main`` as base for the branch. This allows you to easily compare
+     ``astro-provider-ray/main`` as base for the branch. This allows you to easily compare
      changes, have several changes that you work on at the same time and many more.
 
    * Add necessary code and unit tests.
@@ -163,4 +163,4 @@ All tests are inside ``./tests`` directory.
 - Just run ``pytest filepath+filename`` to run the tests.
 
 
-For more information, please see the contributing guide available `here <https://github.com/astronomer/airflow-provider-kuberay/blob/main/CONTRIBUTING.rst>`
+For more information, please see the contributing guide available `here <https://github.com/astronomer/astro-provider-ray/blob/main/CONTRIBUTING.rst>`

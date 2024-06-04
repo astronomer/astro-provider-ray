@@ -1,8 +1,8 @@
-package-name: airflow-provider-kuberay
+package-name: astro-provider-ray
 
 display-name: Kuberay
 
-docs-url: https://github.com/astronomer/airflow-provider-kuberay/blob/main/README.md
+docs-url: https://github.com/astronomer/astro-provider-ray/blob/main/README.md
 
 decorators:
   - module: ray_provider.decorators.kuberay.ray_task
