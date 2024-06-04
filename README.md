@@ -14,6 +14,15 @@ This repository provides a set of tools for integrating Ray with Apache Airflow,
 #### Triggers
 - **RayJobTrigger**: This trigger monitors the status of asynchronous jobs submitted via the `SubmitRayJob` operator. It ensures that the Airflow task waits until the job is completed before proceeding with the next step in the DAG.
 
+### Compatibility
+
+These operators have been tested with the below versions. They will most likely be compatible with future versions but have not yet been tested.
+
+| Python Version | Airflow Version | Ray Version |
+|----------------|-----------------|-------------|
+| 3.11           | 2.9.0           | 2.23.0      |
+
+
 ### Example Usage
 
 The provided `start_ray_cluster.py` script demonstrates how to configure and use the `RayClusterOperator` and `SubmitRayJob` operators within an Airflow DAG:

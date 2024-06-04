@@ -15,6 +15,24 @@ if TYPE_CHECKING:
     from airflow.utils.context import Context
 
 class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
+    """
+    A custom Airflow operator for Ray tasks.
+
+    This operator combines the functionality of Airflow's DecoratedOperator
+    with the Ray SubmitRayJob operator, allowing users to define tasks that
+    submit jobs to a Ray cluster.
+
+    .. seealso::
+    For more information on how to use this operator, take a look at the guide:
+    :ref:`howto/operator:RayCustomOperator`
+
+    :param custom_operator_name: Required. Custom operator name.
+    :param template_fields: Required. Fields that are template-able.
+    :param template_fields_renderers: Required. Fields renderers for templates.
+    :param config: Required. Configuration dictionary for the Ray job.
+    :param node_group: Optional. Node group for the Ray job.
+    """
+
     custom_operator_name = "@task.ray"
 
     template_fields: Sequence[str] = (*DecoratedOperator.template_fields, *SubmitRayJob.template_fields)
@@ -56,7 +74,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         try:
             py_source = self.get_python_source().splitlines()
             function_body = textwrap.dedent('\n'.join(py_source[1:]))
-            
+
             script_filename = os.path.join(tmp_dir, "script.py")
             with open(script_filename, "w") as file:
                 # Creating a function call string with arguments from function_args
@@ -69,13 +87,13 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
                     all_args_str = args_str
                 else:
                     all_args_str = kwargs_str
-                
+
                 script_body = f"{function_body}\n{self.extract_function_name()}({all_args_str})"
                 file.write(script_body)
 
             self.log.info(script_body)
 
-            self.entrypoint = f'python script.py'
+            self.entrypoint = 'python script.py'
             self.runtime_env['working_dir'] = tmp_dir
             self.log.info("Running ray job...")
 
@@ -94,12 +112,28 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         # Directly using __name__ attribute to retrieve the function name
         return self.python_callable.__name__
 
-        
+
 def ray_task(
         python_callable: Callable | None = None,
         multiple_outputs: bool | None = None,
         **kwargs,
 ) -> TaskDecorator:
+    """
+    Decorator to define a task that submits a Ray job.
+
+    This decorator allows defining a task that submits a Ray job, handling multiple outputs if needed.
+
+    .. seealso::
+        For more information on how to use this decorator, take a look at the guide:
+        :ref:`howto/decorator:RayJobDecorator`
+
+    :param python_callable: Required. The callable function to decorate.
+    :param multiple_outputs: Optional. If True, will return multiple outputs.
+    :param kwargs: Additional keyword arguments.
+
+    :returns: The decorated task.
+    :rtype: TaskDecorator
+    """
     return task_decorator_factory(
         python_callable=python_callable,
         multiple_outputs=multiple_outputs,

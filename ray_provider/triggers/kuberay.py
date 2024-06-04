@@ -2,10 +2,30 @@ from __future__ import annotations
 import asyncio
 from typing import Any, AsyncIterator
 from airflow.triggers.base import BaseTrigger, TriggerEvent
-from ray.dashboard.modules.job.sdk import JobSubmissionClient, JobStatus
+from ray.job_submission import JobSubmissionClient, JobStatus
 import time
 
 class RayJobTrigger(BaseTrigger):
+
+    """
+    Triggers and monitors the status of a Ray job.
+
+    This trigger periodically checks the status of a submitted job on a Ray cluster and 
+    yields events based on the job's status. It handles timeouts and errors during 
+    the polling process.
+
+    .. seealso::
+        For more information on how to use this trigger, take a look at the guide:
+        :ref:`howto/trigger:RayJobTrigger`
+
+    :param job_id: Required. The unique identifier of the Ray job.
+    :param host: Required. The host address of the Ray cluster.
+    :param end_time: Required. The maximum time to wait for the job to reach a terminal status.
+    :param poll_interval: Optional. The interval in seconds at which to poll the job status. Defaults to 30 seconds.
+
+    :raises AirflowException: If no job_id is provided or an error occurs during polling.
+    """
+
     def __init__(self,
                  job_id: str,
                  host: str,

@@ -21,6 +21,30 @@ from ray_provider.triggers.kuberay import RayJobTrigger
 from ray.job_submission import JobSubmissionClient, JobStatus
 
 class RayClusterOperator(BaseOperator):
+    """
+    Operator to manage and monitor a Ray cluster on Kubernetes.
+
+    This operator handles the creation and management of a Ray cluster on a Kubernetes
+    cluster using specified YAML configuration files. It supports the creation of 
+    necessary resources, such as DaemonSets and Services, and integrates with the KubeRay
+    operator for enhanced functionality.
+
+    .. seealso::
+        For more information on how to use this operator, take a look at the guide:
+        :ref:`howto/operator:RayClusterOperator`
+
+    :param cluster_name: Required. The name of the Ray cluster.
+    :param region: Required. The region where the Ray cluster is deployed.
+    :param kubeconfig: Required. The kubeconfig file path for the Kubernetes cluster.
+    :param ray_namespace: Required. The Kubernetes namespace for the Ray cluster.
+    :param ray_cluster_yaml: Required. The YAML file path for the Ray cluster specification.
+    :param ray_svc_yaml: Required. The YAML file path for the Ray service specification.
+    :param ray_gpu: Optional. Whether to use GPUs in the Ray cluster. Defaults to False.
+    :param env: Optional. A dictionary of environment variables for the job.
+    :param kwargs: Additional keyword arguments.
+
+    :raises AirflowException: If required parameters are not provided or if resource creation fails.
+    """
 
     def __init__(self,*,
                  cluster_name: str,
@@ -303,20 +327,32 @@ class RayClusterOperator(BaseOperator):
         return urls
 
 class SubmitRayJob(BaseOperator):
+    """
+    Operator to submit and monitor a Ray job.
 
-    template_fields = ('host','entrypoint','runtime_env','num_cpus','num_gpus','memory')
+    This operator handles the submission of a Ray job and monitors its status until completion.
+    It supports deferring execution and resuming based on job status changes.
 
-    def __init__(self,*,
-                 host: str,
-                 entrypoint: str,
-                 runtime_env: dict,
-                 num_cpus: int = 0,
-                 num_gpus: int = 0,
-                 memory: int | float = 0,
-                 resources: dict = None, 
-                 timeout: int = 600,
-                 **kwargs):
-        
+    .. seealso::
+        For more information on how to use this operator, take a look at the guide:
+        :ref:`howto/operator:SubmitRayJob`
+
+    :param host: Required. The Ray cluster host URL.
+    :param entrypoint: Required. The command or script to execute.
+    :param runtime_env: Required. The runtime environment for the job.
+    :param num_cpus: Optional. Number of CPUs required for the job. Defaults to 0.
+    :param num_gpus: Optional. Number of GPUs required for the job. Defaults to 0.
+    :param memory: Optional. Amount of memory required for the job. Defaults to 0.
+    :param resources: Optional. Additional resources required for the job. Defaults to None.
+    :param timeout: Optional. Maximum time to wait for job completion in seconds. Defaults to 600 seconds.
+
+    :raises AirflowException: If the job fails or is cancelled, or if an unexpected status is encountered.
+    """
+
+    template_fields = ('host', 'entrypoint', 'runtime_env', 'num_cpus', 'num_gpus', 'memory')
+
+    def __init__(self, *, host: str, entrypoint: str, runtime_env: dict, num_cpus: int = 0, num_gpus: int = 0,
+                 memory: int | float = 0, resources: dict = None, timeout: int = 600, **kwargs):
         super().__init__(**kwargs)
         self.host = host
         self.entrypoint = entrypoint
@@ -329,40 +365,40 @@ class SubmitRayJob(BaseOperator):
         self.client = None
         self.job_id = None
         self.status_to_wait_for = {JobStatus.SUCCEEDED, JobStatus.STOPPED, JobStatus.FAILED}
-        
-    def on_kill(self):
-        if self.client:   
-            return self.client.delete_job(self.job_id)
-        else:
-            return
-    def execute(self,context : Context):
 
+    def on_kill(self):
+        if self.client:
+            return self.client.delete_job(self.job_id)
+
+    def execute(self, context: Context):
         if not self.client:
             self.log.info(f"URL is: {self.host}")
-            self.client = JobSubmissionClient(f"{self.host}")
+            self.client = JobSubmissionClient(self.host)
 
         self.job_id = self.client.submit_job(
-            entrypoint= self.entrypoint,
-            runtime_env=self.runtime_env, #https://docs.ray.io/en/latest/ray-core/handling-dependencies.html#runtime-environments
-            entrypoint_num_cpus = self.num_cpus,
-            entrypoint_num_gpus = self.num_gpus,
-            entrypoint_memory = self.memory,
-            entrypoint_resources = self.resources)  
-        
-        self.log.info(f"Ray job submitted with id:{self.job_id}")
+            entrypoint=self.entrypoint,
+            runtime_env=self.runtime_env,  # https://docs.ray.io/en/latest/ray-core/handling-dependencies.html#runtime-environments
+            entrypoint_num_cpus=self.num_cpus,
+            entrypoint_num_gpus=self.num_gpus,
+            entrypoint_memory=self.memory,
+            entrypoint_resources=self.resources
+        )
+
+        self.log.info(f"Ray job submitted with id: {self.job_id}")
 
         current_status = self.get_current_status()
         if current_status in (JobStatus.RUNNING, JobStatus.PENDING):
             self.log.info("Deferring the polling to RayJobTrigger...")
             self.defer(
-                timeout= timedelta(hours=1),
-                trigger= RayJobTrigger(
-                    host = self.host,
-                    job_id = self.job_id,
-                    end_time= time.time() + self.timeout,
+                timeout=timedelta(hours=1),
+                trigger=RayJobTrigger(
+                    host=self.host,
+                    job_id=self.job_id,
+                    end_time=time.time() + self.timeout,
                     poll_interval=2
                 ),
-                method_name="execute_complete",)
+                method_name="execute_complete"
+            )
         elif current_status == JobStatus.SUCCEEDED:
             self.log.info("Job %s completed successfully", self.job_id)
             return
@@ -371,18 +407,16 @@ class SubmitRayJob(BaseOperator):
         elif current_status == JobStatus.STOPPED:
             raise AirflowException(f"Job was cancelled:\n{self.job_id}")
         else:
-            raise Exception(f"Encountered unexpected state `{current_status}` for job_id `{self.job_id}")
-        
+            raise Exception(f"Encountered unexpected state `{current_status}` for job_id `{self.job_id}`")
+
         return self.job_id
-    
+
     def get_current_status(self):
-        
         job_status = self.client.get_job_status(self.job_id)
         self.log.info(f"Current job status for {self.job_id} is: {job_status}")
         return job_status
-    
-    def execute_complete(self, context: Context, event: Any = None) -> None:
 
+    def execute_complete(self, context: Context, event: Any = None) -> None:
         if event["status"] == "error" or event["status"] == "cancelled":
             self.log.info(f"Ray job {self.job_id} execution not completed...")
             raise AirflowException(event["message"])
