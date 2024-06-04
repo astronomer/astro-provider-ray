@@ -1,4 +1,4 @@
-# airflow-provider-kuberay
+# astro-provider-ray
 
 This repository provides a set of tools for integrating Ray with Apache Airflow, enabling the orchestration of Ray jobs within Airflow workflows. It includes a decorator, two operators, and one trigger specifically designed for managing and monitoring Ray jobs and services.
 
@@ -8,7 +8,7 @@ This repository provides a set of tools for integrating Ray with Apache Airflow,
 - **_RayDecoratedOperator**: This decorator allows you to submit a job to a Ray cluster. It simplifies the integration process by decorating your task functions to work seamlessly with Ray.
 
 #### Operators
-- **RayClusterOperator**: This operator sets up a Ray cluster. It requires access to the kubeconfig file, the Ray cluster specification, and the services specification. For an example, refer to the [example_dags](https://github.com/astronomer/airflow-provider-kuberay/tree/main/ray_provider/example_dags) folder.
+- **RayClusterOperator**: This operator sets up a Ray cluster. It requires access to the kubeconfig file, the Ray cluster specification, and the services specification. For an example, refer to the [example_dags](https://github.com/astronomer/astro-provider-ray/tree/main/ray_provider/example_dags) folder.
 - **SubmitRayJob**: This operator is used to submit a job to a Ray cluster using a specified host name. It facilitates scheduling Ray jobs to execute at defined intervals.
 
 #### Triggers
@@ -90,7 +90,7 @@ ray_cluster >> submit_ray_job
 _________
 
 We follow [Semantic Versioning](https://semver.org/) for releases.
-Check [CHANGELOG.rst](https://github.com/astronomer/airflow-provider-kuberay/blob/main/CHANGELOG.rst)
+Check [CHANGELOG.rst](https://github.com/astronomer/astro-provider-ray/blob/main/CHANGELOG.rst)
 for the latest changes.
 
 
@@ -99,4 +99,4 @@ __________________
 
 All contributions, bug reports, bug fixes, documentation improvements, enhancements are welcome.
 
-A detailed overview an how to contribute can be found in the [Contributing Guide](https://github.com/astronomer/airflow-provider-kuberay/blob/main/CONTRIBUTING.rst)
+A detailed overview an how to contribute can be found in the [Contributing Guide](https://github.com/astronomer/astro-provider-ray/blob/main/CONTRIBUTING.rst)
