@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 import os
-import textwrap
 import shutil
+import textwrap
 from tempfile import mkdtemp
 from typing import TYPE_CHECKING, Callable, Sequence
-from airflow.utils.types import NOTSET
-from airflow.decorators.base import DecoratedOperator, task_decorator_factory, TaskDecorator
-from airflow.utils.context import Context
+
+from airflow.decorators.base import DecoratedOperator, TaskDecorator, task_decorator_factory
 from airflow.exceptions import AirflowException
-from ray_provider.operators.kuberay import SubmitRayJob
+from airflow.utils.context import Context
+
+from ray_provider.operators.ray import SubmitRayJob
 
 if TYPE_CHECKING:
     from airflow.utils.context import Context
+
 
 class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
     """
@@ -21,10 +23,6 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
     This operator combines the functionality of Airflow's DecoratedOperator
     with the Ray SubmitRayJob operator, allowing users to define tasks that
     submit jobs to a Ray cluster.
-
-    .. seealso::
-    For more information on how to use this operator, take a look at the guide:
-    :ref:`howto/operator:RayCustomOperator`
 
     :param custom_operator_name: Required. Custom operator name.
     :param template_fields: Required. Fields that are template-able.
@@ -43,13 +41,13 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
     def __init__(self, config: dict, node_group: str = None, **kwargs) -> None:
         # Setting default values if not provided in the configuration
-        self.host = config.get('host', os.getenv('RAY_DASHBOARD_URL'))
-        self.entrypoint = config.get('entrypoint', 'python script.py')  # Default entrypoint if not provided
-        self.runtime_env = config.get('runtime_env', {})
+        self.host = config.get("host", os.getenv("RAY_DASHBOARD_URL"))
+        self.entrypoint = config.get("entrypoint", "python script.py")  # Default entrypoint if not provided
+        self.runtime_env = config.get("runtime_env", {})
 
-        self.num_cpus = config.get('num_cpus')
-        self.num_gpus = config.get('num_gpus')
-        self.memory = config.get('memory')
+        self.num_cpus = config.get("num_cpus")
+        self.num_gpus = config.get("num_gpus")
+        self.memory = config.get("memory")
         self.config = config
         self.node_group = node_group
 
@@ -66,14 +64,14 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
             num_cpus=self.num_cpus,
             num_gpus=self.num_gpus,
             memory=self.memory,
-            **kwargs
+            **kwargs,
         )
 
     def execute(self, context: Context):
         tmp_dir = mkdtemp(prefix="ray_")  # Manually create a temp directory
         try:
             py_source = self.get_python_source().splitlines()
-            function_body = textwrap.dedent('\n'.join(py_source[1:]))
+            function_body = textwrap.dedent("\n".join(py_source[1:]))
 
             script_filename = os.path.join(tmp_dir, "script.py")
             with open(script_filename, "w") as file:
@@ -88,13 +86,13 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
                 else:
                     all_args_str = kwargs_str
 
-                script_body = f"{function_body}\n{self.extract_function_name()}({all_args_str})"
+                script_body = f"{function_body}\n{self._extract_function_name()}({all_args_str})"
                 file.write(script_body)
 
             self.log.info(script_body)
 
-            self.entrypoint = 'python script.py'
-            self.runtime_env['working_dir'] = tmp_dir
+            self.entrypoint = "python script.py"
+            self.runtime_env["working_dir"] = tmp_dir
             self.log.info("Running ray job...")
 
             result = super().execute(context)  # Execute the job
@@ -108,24 +106,20 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
         return result
 
-    def extract_function_name(self):
+    def _extract_function_name(self):
         # Directly using __name__ attribute to retrieve the function name
         return self.python_callable.__name__
 
 
 def ray_task(
-        python_callable: Callable | None = None,
-        multiple_outputs: bool | None = None,
-        **kwargs,
+    python_callable: Callable | None = None,
+    multiple_outputs: bool | None = None,
+    **kwargs,
 ) -> TaskDecorator:
     """
     Decorator to define a task that submits a Ray job.
 
     This decorator allows defining a task that submits a Ray job, handling multiple outputs if needed.
-
-    .. seealso::
-        For more information on how to use this decorator, take a look at the guide:
-        :ref:`howto/decorator:RayJobDecorator`
 
     :param python_callable: Required. The callable function to decorate.
     :param multiple_outputs: Optional. If True, will return multiple outputs.
@@ -138,5 +132,5 @@ def ray_task(
         python_callable=python_callable,
         multiple_outputs=multiple_outputs,
         decorated_operator_class=_RayDecoratedOperator,
-        **kwargs
+        **kwargs,
     )

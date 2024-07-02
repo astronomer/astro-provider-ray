@@ -8,7 +8,7 @@ This repository provides a set of tools for integrating Ray with Apache Airflow,
 - **_RayDecoratedOperator**: This decorator allows you to submit a job to a Ray cluster. It simplifies the integration process by decorating your task functions to work seamlessly with Ray.
 
 #### Operators
-- **RayClusterOperator**: This operator sets up a Ray cluster. It requires access to the kubeconfig file, the Ray cluster specification, and the services specification. For an example, refer to the [example_dags](https://github.com/astronomer/astro-provider-ray/tree/main/ray_provider/example_dags) folder.
+
 - **SubmitRayJob**: This operator is used to submit a job to a Ray cluster using a specified host name. It facilitates scheduling Ray jobs to execute at defined intervals.
 
 #### Triggers
@@ -25,65 +25,69 @@ These operators have been tested with the below versions. They will most likely 
 
 ### Example Usage
 
-The provided `start_ray_cluster.py` script demonstrates how to configure and use the `RayClusterOperator` and `SubmitRayJob` operators within an Airflow DAG:
+The provided `setup_teardown.py` script demonstrates how to configure and use the `SetupRayCluster`, `DeleteRayCluster` and the `SubmitRayJob` operators within an Airflow DAG:
 
 ```python
 import os
 from airflow import DAG
 from datetime import datetime, timedelta
-from ray_provider.operators.kuberay import RayClusterOperator, SubmitRayJob
+from ray_provider.operators.ray import SetupRayCluster, DeleteRayCluster, SubmitRayJob
 
 default_args = {
-    'owner': 'airflow',
-    'start_date': datetime(2024, 3, 26),
-    'retries': 1,
-    'retry_delay': timedelta(minutes=1),
+    "owner": "airflow",
+    "start_date": datetime(2024, 3, 26),
+    "retries": 1,
+    "retry_delay": timedelta(minutes=0),
 }
 
-CLUSTERNAME = 'RayCluster'
-REGION = 'us-east-2'
-K8SPEC = '/usr/local/airflow/dags/scripts/k8.yaml'
-RAY_SPEC = '/usr/local/airflow/dags/scripts/ray.yaml'
-RAY_SVC = '/usr/local/airflow/dags/scripts/ray-service.yaml'
-RAY_RUNTIME_ENV = {"working_dir": '/usr/local/airflow/dags/ray_scripts'}
-kubeconfig_directory = f"/tmp/airflow_kubeconfigs/{REGION}/{CLUSTERNAME}/"
-os.makedirs(kubeconfig_directory, exist_ok=True)  # Ensure the directory exists
-KUBECONFIG_PATH = os.path.join(kubeconfig_directory, "kubeconfig.yaml")
+CLUSTERNAME = "RayCluster"
+REGION = "us-east-2"
+K8SPEC = "/usr/local/airflow/dags/scripts/k8.yaml"
+RAY_SPEC = "/usr/local/airflow/dags/scripts/ray.yaml"
+RAY_SVC = "/usr/local/airflow/dags/scripts/ray-service.yaml"
+RAY_RUNTIME_ENV = {"working_dir": "/usr/local/airflow/dags/ray_scripts"}
 
 dag = DAG(
-    'start_ray_cluster',
+    "Setup_Teardown",
     default_args=default_args,
-    description='Setup EKS cluster with eksctl and deploy KubeRay operator',
-    schedule_interval='@daily',
+    description="Setup Ray cluster and submit a job",
+    schedule_interval=None,
 )
 
-ray_cluster = RayClusterOperator(
-    task_id="RayClusterOperator",
-    cluster_name=CLUSTERNAME,
-    region=REGION,
-    ray_namespace="ray",
+setup_cluster = SetupRayCluster(
+    task_id="SetupRayCluster",
+    conn_id="ray_conn",
     ray_cluster_yaml=RAY_SPEC,
     ray_svc_yaml=RAY_SVC,
-    kubeconfig=KUBECONFIG_PATH,
-    ray_gpu=False,
-    env={},
+    use_gpu=False,
     dag=dag,
 )
 
 submit_ray_job = SubmitRayJob(
     task_id="SubmitRayJob",
-    host="{{ task_instance.xcom_pull(task_ids='RayClusterOperator', key='dashboard') }}",
-    entrypoint='python script.py',
+    conn_id="ray_conn",
+    entrypoint="python script.py",
     runtime_env=RAY_RUNTIME_ENV,
     num_cpus=1,
     num_gpus=0,
     memory=0,
     resources={},
+    xcom_task_key="SetupRayCluster.dashboard",
     dag=dag,
 )
 
-# Create Ray cluster and submit Ray job
-ray_cluster >> submit_ray_job
+delete_cluster = DeleteRayCluster(
+    task_id="DeleteRayCluster",
+    conn_id="ray_conn",
+    ray_cluster_yaml=RAY_SPEC,
+    ray_svc_yaml=RAY_SVC,
+    use_gpu=False,
+    dag=dag,
+)
+
+# Create ray cluster and submit ray job
+setup_cluster.as_setup() >> submit_ray_job >> delete_cluster.as_teardown()
+setup_cluster >> delete_cluster
 ```
 
 ### Changelog

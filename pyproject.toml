@@ -27,6 +27,8 @@ dependencies = [
     "ray[default]",
     "kubernetes",
     "requests",
+    "pytest",
+    "PyYAML",
     "pytest-asyncio"
 ]
 
