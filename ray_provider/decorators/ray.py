@@ -28,7 +28,6 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
     :param template_fields: Required. Fields that are template-able.
     :param template_fields_renderers: Required. Fields renderers for templates.
     :param config: Required. Configuration dictionary for the Ray job.
-    :param node_group: Optional. Node group for the Ray job.
     """
 
     custom_operator_name = "@task.ray"
@@ -39,7 +38,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         **SubmitRayJob.template_fields_renderers,
     }
 
-    def __init__(self, config: dict, node_group: str = None, **kwargs) -> None:
+    def __init__(self, config: dict, **kwargs) -> None:
         # Setting default values if not provided in the configuration
         self.host = config.get("host", os.getenv("RAY_DASHBOARD_URL"))
         self.entrypoint = config.get("entrypoint", "python script.py")  # Default entrypoint if not provided
@@ -49,7 +48,6 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         self.num_gpus = config.get("num_gpus")
         self.memory = config.get("memory")
         self.config = config
-        self.node_group = node_group
 
         if isinstance(self.num_cpus, str):
             raise TypeError("num_cpus should be an integer or float value")
