@@ -61,7 +61,7 @@ class SetupRayCluster(BaseOperator):
         with open(path_or_link) as f:
             return yaml.safe_load(f)
 
-    def wait_for_external_dns(
+    def _wait_for_external_dns(
         self, service_name: str, max_retries: int = 30, retry_interval: int = 40
     ) -> Optional[str]:
         for attempt in range(max_retries):
@@ -75,7 +75,7 @@ class SetupRayCluster(BaseOperator):
             time.sleep(retry_interval)
         return None
 
-    def is_port_open(self, host, port):
+    def _is_port_open(self, host, port):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
         try:
@@ -85,14 +85,14 @@ class SetupRayCluster(BaseOperator):
         except OSError:
             return False
 
-    def wait_for_endpoints(self, external_dns: str, service_name: str, max_retries=30, retry_interval=40) -> bool:
+    def _wait_for_endpoints(self, external_dns: str, service_name: str, max_retries=30, retry_interval=40) -> bool:
         for attempt in range(max_retries):
             endpoints = self.hook.get_endpoints(name=service_name)
             if endpoints and endpoints.subsets and all([subset.addresses for subset in endpoints.subsets]):
                 all_ports_open = True
                 for subset in endpoints.subsets:
                     for port in subset.ports:
-                        if not self.is_port_open(external_dns, port.port):
+                        if not self._is_port_open(external_dns, port.port):
                             all_ports_open = False
                             self.log.info(f"Port {port.port} on {external_dns} is not open yet.")
                             break
@@ -106,7 +106,7 @@ class SetupRayCluster(BaseOperator):
             time.sleep(retry_interval)
         return False
 
-    def construct_service_urls(self, service, external_dns: str) -> Dict[str, str]:
+    def _construct_service_urls(self, service, external_dns: str) -> Dict[str, str]:
         return {port.name: f"http://{external_dns}:{port.port}" for port in service.spec.ports}
 
     def execute(self, context: Context):
@@ -153,16 +153,16 @@ class SetupRayCluster(BaseOperator):
                 self.log.info(f"Creating service name: {service_name}")
                 self.hook.create_service(service_name, ray_sv_spec)
 
-            external_dns = self.wait_for_external_dns(service_name=service_name)
+            external_dns = self._wait_for_external_dns(service_name=service_name)
             if not external_dns:
                 self.log.error("Failed to find the external DNS name for the service within the expected time.")
                 raise AirflowException("Failed to find the external DNS name for the service within the expected time.")
 
-            if not self.wait_for_endpoints(external_dns, service_name=service_name):
+            if not self._wait_for_endpoints(external_dns, service_name=service_name):
                 self.log.error("Pods failed to become ready within the expected time.")
                 raise AirflowException("Pods failed to become ready within the expected time.")
 
-            urls = self.construct_service_urls(existing_service, external_dns)
+            urls = self._construct_service_urls(existing_service, external_dns)
 
             if urls:
                 for key, value in urls.items():
@@ -283,7 +283,7 @@ class SubmitRayJob(BaseOperator):
     :raises AirflowException: If the job fails or is cancelled, or if an unexpected status is encountered.
     """
 
-    template_fields = ("entrypoint", "runtime_env", "num_cpus", "num_gpus", "memory", "xcom_task_key")
+    template_fields = ("conn_id", "entrypoint", "runtime_env", "num_cpus", "num_gpus", "memory", "xcom_task_key")
 
     def __init__(
         self,

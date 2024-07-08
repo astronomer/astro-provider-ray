@@ -7,5 +7,8 @@ def get_provider_info():
         "package-name": "astro-provider-ray",  # Required
         "name": "Ray",  # Required
         "description": "An integration between airflow and ray",  # Required
+        "connection-types": [
+            {"connection-type": "ray", "hook-class-name": "ray_provider.hooks.ray.RayHook"}
+        ],
         "versions": [__version__],  # Required
     }

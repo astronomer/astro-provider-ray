@@ -7,6 +7,7 @@ from tempfile import mkdtemp
 from typing import TYPE_CHECKING, Callable, Sequence
 
 from airflow.decorators.base import DecoratedOperator, TaskDecorator, task_decorator_factory
+from airflow.decorators import task
 from airflow.exceptions import AirflowException
 from airflow.utils.context import Context
 
@@ -40,7 +41,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
     def __init__(self, config: dict, **kwargs) -> None:
         # Setting default values if not provided in the configuration
-        self.host = config.get("host", os.getenv("RAY_DASHBOARD_URL"))
+        self.conn_id = config.get("conn_id")
         self.entrypoint = config.get("entrypoint", "python script.py")  # Default entrypoint if not provided
         self.runtime_env = config.get("runtime_env", {})
 
@@ -56,7 +57,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
         # Ensuring we pass all necessary initialization parameters to the superclass
         super().__init__(
-            host=self.host,
+            conn_id=self.conn_id,
             entrypoint=self.entrypoint,
             runtime_env=self.runtime_env,
             num_cpus=self.num_cpus,
@@ -109,7 +110,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         return self.python_callable.__name__
 
 
-def ray_task(
+def ray(
     python_callable: Callable | None = None,
     multiple_outputs: bool | None = None,
     **kwargs,
@@ -132,3 +133,6 @@ def ray_task(
         decorated_operator_class=_RayDecoratedOperator,
         **kwargs,
     )
+
+
+task.ray = ray  # Assign the ray decorator to task.ray
