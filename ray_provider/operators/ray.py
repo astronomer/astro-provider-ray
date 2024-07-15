@@ -112,11 +112,15 @@ class SetupRayCluster(BaseOperator):
                 self.log.info("No URLs to push to XCom.")
 
     def execute(self, context: Context) -> None:
-        self._install_kuberay_operator()
-        self._setup_ray_cluster()
-        if self.use_gpu:
-            self._setup_gpu_daemonset()
-        self._setup_ray_service(context)
+        try:
+            self._install_kuberay_operator()
+            self._setup_ray_cluster()
+            if self.use_gpu:
+                self._setup_gpu_daemonset()
+            self._setup_ray_service(context)
+        except Exception as e:
+            self.log.error(f"Error executing task: {e}")
+            raise AirflowException(f"Task execution failed: {e}")
 
 
 class DeleteRayCluster(BaseOperator):
@@ -195,11 +199,15 @@ class DeleteRayCluster(BaseOperator):
             raise e
 
     def execute(self, context: Context) -> None:
-        self._delete_ray_service()
-        if self.use_gpu:
-            self._delete_gpu_daemonset()
-        self._delete_ray_cluster()
-        self.hook.uninstall_kuberay_operator()
+        try:
+            self._delete_ray_service()
+            if self.use_gpu:
+                self._delete_gpu_daemonset()
+            self._delete_ray_cluster()
+            self.hook.uninstall_kuberay_operator()
+        except Exception as e:
+            self.log.error(f"Error executing task: {e}")
+            raise AirflowException(f"Task execution failed: {e}")
 
 
 class SubmitRayJob(BaseOperator):
