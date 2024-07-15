@@ -4,10 +4,9 @@ import os
 import shutil
 import textwrap
 from tempfile import mkdtemp
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Callable
 
 from airflow.decorators.base import DecoratedOperator, TaskDecorator, task_decorator_factory
-from airflow.decorators import task
 from airflow.exceptions import AirflowException
 from airflow.utils.context import Context
 
@@ -33,21 +32,21 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
     custom_operator_name = "@task.ray"
 
-    template_fields: Sequence[str] = (*DecoratedOperator.template_fields, *SubmitRayJob.template_fields)
+    template_fields: Any = (*DecoratedOperator.template_fields, *SubmitRayJob.template_fields)
     template_fields_renderers: dict[str, str] = {
         **DecoratedOperator.template_fields_renderers,
         **SubmitRayJob.template_fields_renderers,
     }
 
-    def __init__(self, config: dict, **kwargs) -> None:
+    def __init__(self, config: dict[str, Any], **kwargs: Any) -> None:
         # Setting default values if not provided in the configuration
-        self.conn_id = config.get("conn_id")
-        self.entrypoint = config.get("entrypoint", "python script.py")  # Default entrypoint if not provided
-        self.runtime_env = config.get("runtime_env", {})
+        self.conn_id: str = config.get("conn_id", "")
+        self.entrypoint: str = config.get("entrypoint", "python script.py")  # Default entrypoint if not provided
+        self.runtime_env: dict[str, Any] = config.get("runtime_env", {})
 
-        self.num_cpus = config.get("num_cpus")
-        self.num_gpus = config.get("num_gpus")
-        self.memory = config.get("memory")
+        self.num_cpus: int | float = config.get("num_cpus", 1)
+        self.num_gpus: int | float = config.get("num_gpus", 0)
+        self.memory: int | float = config.get("memory", 0)
         self.config = config
 
         if isinstance(self.num_cpus, str):
@@ -66,10 +65,10 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
             **kwargs,
         )
 
-    def execute(self, context: Context):
+    def execute(self, context: Context) -> Any:
         tmp_dir = mkdtemp(prefix="ray_")  # Manually create a temp directory
         try:
-            py_source = self.get_python_source().splitlines()
+            py_source = self.get_python_source().splitlines()  # type: ignore
             function_body = textwrap.dedent("\n".join(py_source[1:]))
 
             script_filename = os.path.join(tmp_dir, "script.py")
@@ -88,8 +87,6 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
                 script_body = f"{function_body}\n{self._extract_function_name()}({all_args_str})"
                 file.write(script_body)
 
-            self.log.info(script_body)
-
             self.entrypoint = "python script.py"
             self.runtime_env["working_dir"] = tmp_dir
             self.log.info("Running ray job...")
@@ -105,15 +102,15 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
         return result
 
-    def _extract_function_name(self):
+    def _extract_function_name(self) -> str:
         # Directly using __name__ attribute to retrieve the function name
         return self.python_callable.__name__
 
 
-def ray(
-    python_callable: Callable | None = None,
+def ray_task(
+    python_callable: Callable[..., Any] | None = None,
     multiple_outputs: bool | None = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> TaskDecorator:
     """
     Decorator to define a task that submits a Ray job.
@@ -133,6 +130,3 @@ def ray(
         decorated_operator_class=_RayDecoratedOperator,
         **kwargs,
     )
-
-
-task.ray = ray  # Assign the ray decorator to task.ray

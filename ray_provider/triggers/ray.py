@@ -23,8 +23,8 @@ class RayJobTrigger(BaseTrigger):
     :param poll_interval: Optional. The interval in seconds at which to poll the job status. Defaults to 30 seconds.
     """
 
-    def __init__(self, job_id: str, conn_id: str, xcom_dashboard_url: str | None, poll_interval: int = 30) -> None:
-        super().__init__()
+    def __init__(self, job_id: str, conn_id: str, xcom_dashboard_url: str | None, poll_interval: int = 30):
+        super().__init__()  # type: ignore[no-untyped-call]
         self.job_id = job_id
         self.conn_id = conn_id
         self.dashboard_url = xcom_dashboard_url
@@ -71,10 +71,10 @@ class RayJobTrigger(BaseTrigger):
                 await asyncio.sleep(self.poll_interval)
 
             # Stream logs if available
-            async for multi_line in self.hook.get_tail_logs(self.job_id):
+            async for multi_line in self.hook.get_ray_tail_logs(self.job_id):
                 self.log.info(multi_line)
 
-            completed_status = self.hook.get_job_status(self.job_id)
+            completed_status = self.hook.get_ray_job_status(self.job_id)
             self.log.info(f"Status of completed job {self.job_id} is: {completed_status}")
             if completed_status == JobStatus.SUCCEEDED:
                 yield TriggerEvent(
@@ -111,4 +111,4 @@ class RayJobTrigger(BaseTrigger):
 
         :return: True if the job is in a terminal state, False otherwise.
         """
-        return self.hook.get_job_status(self.job_id) in (JobStatus.SUCCEEDED, JobStatus.STOPPED, JobStatus.FAILED)
+        return self.hook.get_ray_job_status(self.job_id) in (JobStatus.SUCCEEDED, JobStatus.STOPPED, JobStatus.FAILED)

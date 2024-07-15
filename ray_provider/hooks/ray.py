@@ -1,18 +1,20 @@
 import os
-import yaml
-import tempfile
+import socket
 import subprocess
+import tempfile
+import time
 from functools import cached_property
-from typing import Any, AsyncIterator, Dict, Optional, Tuple
+from typing import Any, AsyncIterator
 
+import requests
+import yaml
 from airflow.exceptions import AirflowException
 from airflow.providers.cncf.kubernetes.hooks.kubernetes import KubernetesHook
 from kubernetes import client, config
-from kubernetes.config.kube_config import KubeConfigLoader
 from ray.job_submission import JobStatus, JobSubmissionClient
 
 
-class RayHook(KubernetesHook):
+class RayHook(KubernetesHook):  # type: ignore
     """
     Airflow Hook for interacting with Ray Job Submission Client and Kubernetes Cluster.
     """
@@ -25,7 +27,7 @@ class RayHook(KubernetesHook):
     DEFAULT_NAMESPACE = "default"
 
     @classmethod
-    def get_ui_field_behaviour(cls) -> Dict[str, Any]:
+    def get_ui_field_behaviour(cls) -> dict[str, Any]:
         """Return custom field behaviour."""
         return {
             "hidden_fields": ["host", "schema", "login", "password", "port", "extra"],
@@ -33,7 +35,7 @@ class RayHook(KubernetesHook):
         }
 
     @classmethod
-    def get_connection_form_widgets(cls) -> Dict[str, Any]:
+    def get_connection_form_widgets(cls) -> dict[str, Any]:
         """Return connection widgets to add to connection form."""
         from flask_appbuilder.fieldwidgets import BS3PasswordFieldWidget, BS3TextFieldWidget
         from flask_babel import lazy_gettext
@@ -63,18 +65,13 @@ class RayHook(KubernetesHook):
     def __init__(
         self,
         conn_id: str = default_conn_name,
-        xcom_dashboard_url: Optional[str] = None,
-        *args,
-        **kwargs,
+        xcom_dashboard_url: str | None = None,
     ) -> None:
-        super().__init__(
-            conn_id=conn_id,
-            *args,
-            **kwargs,
-        )
+        super().__init__(conn_id=conn_id)
 
         # We check for address in 3 places -- Connection, Operator input param & Env variable
         self.address = self._get_field("address") or xcom_dashboard_url or os.getenv("RAY_ADDRESS")
+        self.log.info(f"Ray cluster address is: {self.address}")
         self.create_cluster_if_needed = self._get_field("create_cluster_if_needed") or False
         self.cookies = self._get_field("cookies")
         self.metadata = self._get_field("metadata")
@@ -102,10 +99,7 @@ class RayHook(KubernetesHook):
             self.log.debug("Loading kube_config from: %s", kubeconfig_path)
             self._is_in_cluster = False
             self.kubeconfig = kubeconfig_path
-            config.load_kube_config(
-                config_file=kubeconfig_path,
-                context=cluster_context
-            )
+            config.load_kube_config(config_file=kubeconfig_path, context=cluster_context)
         elif kubeconfig_content:
             with tempfile.NamedTemporaryFile(delete=False) as temp_config:
                 self.log.debug("Loading kube_config from connection kube_config content")
@@ -113,10 +107,7 @@ class RayHook(KubernetesHook):
                 temp_config.write(kubeconfig_content.encode())
                 temp_config.flush()
                 self.kubeconfig = temp_config.name
-                config.load_kube_config(
-                    config_file=self.kubeconfig,
-                    context=cluster_context
-                )
+                config.load_kube_config(config_file=self.kubeconfig, context=cluster_context)
 
     @cached_property
     def ray_client(self) -> JobSubmissionClient:
@@ -137,7 +128,7 @@ class RayHook(KubernetesHook):
                 raise AirflowException(f"Failed to create Ray JobSubmissionClient: {e}")
         return self.ray_client_instance
 
-    def submit_job(self, entrypoint: str, runtime_env: Optional[Dict[str, Any]] = None, **job_config: Any) -> str:
+    def submit_ray_job(self, entrypoint: str, runtime_env: dict[str, Any] | None = None, **job_config: Any) -> str:
         """
         Submits a job to the Ray cluster.
 
@@ -151,12 +142,12 @@ class RayHook(KubernetesHook):
         self.log.info(f"Submitted job with ID: {job_id}")
         return str(job_id)
 
-    def delete_job(self, job_id: str) -> bool:
+    def delete_ray_job(self, job_id: str) -> Any:
         client = self.ray_client
         self.log.info(f"Deleting job with ID: {job_id}")
         return client.delete_job(job_id=job_id)
 
-    def get_job_status(self, job_id: str) -> JobStatus:
+    def get_ray_job_status(self, job_id: str) -> JobStatus:
         """
         Gets the status of a submitted job.
 
@@ -168,7 +159,7 @@ class RayHook(KubernetesHook):
         self.log.info(f"Job {job_id} status: {status}")
         return status
 
-    def get_job_logs(self, job_id: str) -> str:
+    def get_ray_job_logs(self, job_id: str) -> str:
         """
         Retrieves the logs of a submitted job.
 
@@ -180,7 +171,7 @@ class RayHook(KubernetesHook):
         self.log.info(f"Logs for job {job_id}: {logs}")
         return str(logs)
 
-    async def get_tail_logs(self, job_id: str) -> AsyncIterator[str]:
+    async def get_ray_tail_logs(self, job_id: str) -> AsyncIterator[str]:
         """
         Tails the logs of a submitted job asynchronously.
 
@@ -191,9 +182,73 @@ class RayHook(KubernetesHook):
         async for lines in client.tail_job_logs(job_id):
             yield lines
 
-    def _run_bash_command(
-        self, command: str, env: Optional[Dict[str, str]] = None
-    ) -> Tuple[Optional[str], Optional[str]]:
+    def load_yaml_content(self, path_or_link: str) -> Any:
+        if path_or_link.startswith("http"):
+            response = requests.get(path_or_link)
+            response.raise_for_status()
+            return yaml.safe_load(response.text)
+
+        with open(path_or_link) as f:
+            return yaml.safe_load(f)
+
+    def get_external_dns(self, service: client.V1Service) -> str | None:
+        if service and service.status.load_balancer.ingress and service.status.load_balancer.ingress[0].hostname:
+            external_dns: str = service.status.load_balancer.ingress[0].hostname
+            self.log.info(f"External DNS name found: {external_dns}")
+            return external_dns
+        else:
+            return None
+
+    def wait_for_external_dns(self, service_name: str, max_retries: int = 30, retry_interval: int = 40) -> str | None:
+        for attempt in range(max_retries):
+            self.log.info(f"Attempt {attempt + 1}: Checking for service's external DNS name...")
+            service = self.get_service(name=service_name)
+            dns_name: str | None = self.get_external_dns(service=service)
+            if dns_name:
+                return dns_name
+            self.log.info("External DNS name not yet available, waiting...")
+            time.sleep(retry_interval)
+        return None
+
+    def _is_port_open(self, host: str, port: int) -> bool:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        try:
+            s.connect((host, port))
+            s.close()
+            return True
+        except OSError:
+            return False
+
+    def _endpoints_are_ready(self, service_name: str) -> bool:
+        endpoints = self.get_endpoints(name=service_name)
+        if endpoints and endpoints.subsets and all([subset.addresses for subset in endpoints.subsets]):
+            return True
+        return False
+
+    def _all_ports_are_open(self, external_dns: str, service_name: str) -> bool:
+        endpoints = self.get_endpoints(name=service_name)
+        if not endpoints or not endpoints.subsets:
+            return False
+
+        for subset in endpoints.subsets:
+            for port in subset.ports:
+                if not self._is_port_open(external_dns, port.port):
+                    return False
+        return True
+
+    def wait_for_endpoints(
+        self, external_dns: str, service_name: str, max_retries: int = 30, retry_interval: int = 40
+    ) -> bool:
+        for attempt in range(max_retries):
+            if self._endpoints_are_ready(service_name) and self._all_ports_are_open(external_dns, service_name):
+                self.log.info("All associated pods are ready.")
+                return True
+            self.log.info(f"Pods not ready, waiting... (Attempt {attempt + 1})")
+            time.sleep(retry_interval)
+        return False
+
+    def _run_bash_command(self, command: str, env: dict[str, str] | None = None) -> tuple[str | None, str | None]:
         # Use the current environment variables if no custom environment is provided
         custom_env = os.environ.copy()
         if env:
@@ -217,8 +272,8 @@ class RayHook(KubernetesHook):
             return None, None
 
     def install_kuberay_operator(
-        self, version: str = "1.0.0", env: Optional[Dict[str, str]] = None
-    ) -> Tuple[Optional[str], Optional[str]]:
+        self, version: str = "1.0.0", env: dict[str, str] | None = None
+    ) -> tuple[str | None, str | None]:
         """
         Install KubeRay operator using Helm.
         """
@@ -232,7 +287,7 @@ class RayHook(KubernetesHook):
         self.log.info(result)
         return result
 
-    def uninstall_kuberay_operator(self) -> Tuple[Optional[str], Optional[str]]:
+    def uninstall_kuberay_operator(self) -> tuple[str | None, str | None]:
         """
         Uninstall KubeRay operator using Helm.
         """
@@ -243,7 +298,7 @@ class RayHook(KubernetesHook):
         self.log.info(result)
         return result
 
-    def get_daemon_set(self, name: str) -> Optional[client.V1DaemonSet]:
+    def get_daemon_set(self, name: str) -> client.V1DaemonSet | None:
         """
         Retrieve a DaemonSet resource in Kubernetes.
 
@@ -262,7 +317,7 @@ class RayHook(KubernetesHook):
                 self.log.error(f"Exception when getting DaemonSet: {e}")
                 raise e
 
-    def create_daemon_set(self, name: str, body: Dict[str, Any]) -> Optional[client.V1DaemonSet]:
+    def create_daemon_set(self, name: str, body: dict[str, Any]) -> client.V1DaemonSet | None:
         """
         Create a DaemonSet resource in Kubernetes.
 
@@ -282,7 +337,7 @@ class RayHook(KubernetesHook):
             self.log.error(f"Exception when creating DaemonSet: {e}")
             return None
 
-    def delete_daemon_set(self, name: str) -> Optional[client.V1Status]:
+    def delete_daemon_set(self, name: str) -> client.V1Status | None:
         """
         Delete a DaemonSet resource in Kubernetes.
 
@@ -297,7 +352,7 @@ class RayHook(KubernetesHook):
             self.log.error(f"Exception when deleting DaemonSet: {e}")
             return None
 
-    def get_service(self, name: str) -> Optional[client.V1Service]:
+    def get_service(self, name: str) -> client.V1Service | None:
         """
         Retrieve a Service resource in Kubernetes.
 
@@ -315,7 +370,7 @@ class RayHook(KubernetesHook):
             self.log.error(f"Exception when getting service: {e}")
             return None
 
-    def create_service(self, name: str, body: Dict[str, Any]) -> Optional[client.V1Service]:
+    def create_service(self, name: str, body: dict[str, Any]) -> client.V1Service | None:
         """
         Create a Service resource in Kubernetes.
 
@@ -334,7 +389,7 @@ class RayHook(KubernetesHook):
             self.log.error(f"Exception when creating service: {e}")
             return None
 
-    def delete_service(self, name: str) -> Optional[client.V1Status]:
+    def delete_service(self, name: str) -> client.V1Status | None:
         """
         Delete a Service resource in Kubernetes.
 
@@ -349,7 +404,7 @@ class RayHook(KubernetesHook):
             self.log.error(f"Exception when deleting service: {e}")
             return None
 
-    def get_endpoints(self, name: str) -> Optional[client.V1Endpoints]:
+    def get_endpoints(self, name: str) -> client.V1Endpoints | None:
         """
         Retrieve an Endpoints resource in Kubernetes.
 
@@ -364,7 +419,7 @@ class RayHook(KubernetesHook):
             self.log.error(f"Exception when getting endpoints: {e}")
             return None
 
-    def create_endpoints(self, name: str, body: Dict[str, Any]) -> Optional[client.V1Endpoints]:
+    def create_endpoints(self, name: str, body: dict[str, Any]) -> client.V1Endpoints | None:
         """
         Create an Endpoints resource in Kubernetes.
 
@@ -383,7 +438,7 @@ class RayHook(KubernetesHook):
             self.log.error(f"Exception when creating endpoints: {e}")
             return None
 
-    def delete_endpoints(self, name: str) -> Optional[client.V1Status]:
+    def delete_endpoints(self, name: str) -> client.V1Status | None:
         """
         Delete an Endpoints resource in Kubernetes.
 
