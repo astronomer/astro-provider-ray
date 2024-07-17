@@ -18,9 +18,10 @@ class RayJobTrigger(BaseTrigger):
     yields events based on the job's status. It handles timeouts and errors during
     the polling process.
 
-    :param job_id: Required. The unique identifier of the Ray job.
-    :param conn_id: Required. The connection ID for the Ray cluster.
-    :param poll_interval: Optional. The interval in seconds at which to poll the job status. Defaults to 30 seconds.
+    :param job_id: The unique identifier of the Ray job.
+    :param conn_id: The connection ID for the Ray cluster.
+    :param xcom_dashboard_url: Optional URL for the Ray dashboard.
+    :param poll_interval: The interval in seconds at which to poll the job status. Defaults to 30 seconds.
     """
 
     def __init__(self, job_id: str, conn_id: str, xcom_dashboard_url: str | None, poll_interval: int = 30):
@@ -57,12 +58,12 @@ class RayJobTrigger(BaseTrigger):
 
     async def run(self) -> AsyncIterator[TriggerEvent]:
         """
-        Periodically polls the job status and yields events based on the job's state.
+        Asynchronously polls the job status and yields events based on the job's state.
 
-        This method logs job status at each poll interval and streams logs if available.
+        This method gets job status at each poll interval and streams logs if available.
         It yields a TriggerEvent upon job completion, cancellation, or failure.
 
-        :yield: TriggerEvent containing the status and message related to the job.
+        :yield: TriggerEvent containing the status, message, and job ID related to the job.
         """
         try:
             self.log.info(f"Polling for job {self.job_id} every {self.poll_interval} seconds...")

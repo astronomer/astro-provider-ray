@@ -5,6 +5,7 @@ from datetime import timedelta
 from functools import cached_property
 from typing import Any
 
+import yaml
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
 from airflow.providers.cncf.kubernetes.utils.pod_manager import PodOperatorHookProtocol
@@ -22,7 +23,6 @@ class SetupRayCluster(BaseOperator):
         self,
         conn_id: str,
         ray_cluster_yaml: str,
-        ray_svc_yaml: str,
         use_gpu: bool = False,
         kuberay_version: str = "1.0.0",
         gpu_device_plugin_yaml: str = "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
@@ -31,7 +31,6 @@ class SetupRayCluster(BaseOperator):
         super().__init__(**kwargs)
         self.conn_id = conn_id
         self.ray_cluster_yaml = ray_cluster_yaml
-        self.ray_svc_yaml = ray_svc_yaml
         self.use_gpu = use_gpu
         self.kuberay_version = kuberay_version
         self.gpu_device_plugin_yaml = gpu_device_plugin_yaml
@@ -48,21 +47,16 @@ class SetupRayCluster(BaseOperator):
         elif not yaml_file.endswith((".yaml", ".yml")):
             raise AirflowException("The specified YAML file must have a .yaml or .yml extension.")
 
-    def _construct_service_urls(self, service: client.V1Service, external_dns: str) -> dict[str, str]:
-        return {port.name: f"http://{external_dns}:{port.port}" for port in service.spec.ports}
+        try:
+            with open(yaml_file) as stream:
+                yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            raise AirflowException(f"The specified YAML file is not valid YAML: {exc}")
 
-    def _install_kuberay_operator(self) -> None:
+    def execute(self, context: Context) -> None:
+
         self.hook.install_kuberay_operator(version=self.kuberay_version)
 
-    def _setup_gpu_daemonset(self) -> None:
-        gpu_driver = self.hook.load_yaml_content(self.gpu_device_plugin_yaml)
-        gpu_driver_name = gpu_driver["metadata"]["name"]
-
-        if not self.hook.get_daemon_set(gpu_driver_name):
-            self.log.info("Creating DaemonSet for NVIDIA device plugin...")
-            self.hook.create_daemon_set(gpu_driver_name, gpu_driver)
-
-    def _setup_ray_cluster(self) -> None:
         self.log.info("Loading yaml content for Ray cluster CRD...")
         cluster_spec = self.hook.load_yaml_content(self.ray_cluster_yaml)
 
@@ -85,42 +79,28 @@ class SetupRayCluster(BaseOperator):
                 self.log.error(f"Exception when checking if {kind} '{name}' exists: {e}")
                 raise e
 
-    def _setup_ray_service(self, context: Context) -> None:
-        if self.ray_svc_yaml:
-            ray_sv_spec = self.hook.load_yaml_content(self.ray_svc_yaml)
-            service_name = ray_sv_spec["metadata"]["name"]
-            self.log.info(f"Service name: {service_name}")
+        if self.use_gpu:
+            gpu_driver = self.hook.load_yaml_content(self.gpu_device_plugin_yaml)
+            gpu_driver_name = gpu_driver["metadata"]["name"]
 
-            existing_service = self.hook.get_service(service_name)
-            if not existing_service:
-                self.log.info(f"Creating service name: {service_name}")
-                existing_service = self.hook.create_service(service_name, ray_sv_spec)
+            if not self.hook.get_daemon_set(gpu_driver_name):
+                self.log.info("Creating DaemonSet for NVIDIA device plugin...")
+                self.hook.create_daemon_set(gpu_driver_name, gpu_driver)
 
-            external_dns = self.hook.wait_for_external_dns(service_name=service_name)
-            if not external_dns:
-                raise AirflowException("Failed to find the external DNS name for the service within the expected time.")
+        lb_details: dict[str, Any] = self.hook.wait_for_load_balancer(
+            service_name=name + "-head-svc", namespace=namespace
+        )
 
-            if not self.hook.wait_for_endpoints(external_dns, service_name=service_name):
-                raise AirflowException("Pods failed to become ready within the expected time.")
+        if lb_details:
+            self.log.info(lb_details)
+            dns = lb_details["ip_or_hostname"]
+            for port in lb_details["ports"]:
+                url = "http://" + dns + ":" + str(port["port"])
+                context["task_instance"].xcom_push(key=port["name"], value=url)
+        else:
+            self.log.info("No URLs to push to XCom.")
 
-            urls = self._construct_service_urls(existing_service, external_dns)
-
-            if urls:
-                for key, value in urls.items():
-                    context["task_instance"].xcom_push(key=key, value=value)
-            else:
-                self.log.info("No URLs to push to XCom.")
-
-    def execute(self, context: Context) -> None:
-        try:
-            self._install_kuberay_operator()
-            self._setup_ray_cluster()
-            if self.use_gpu:
-                self._setup_gpu_daemonset()
-            self._setup_ray_service(context)
-        except Exception as e:
-            self.log.error(f"Error executing task: {e}")
-            raise AirflowException(f"Task execution failed: {e}")
+        return
 
 
 class DeleteRayCluster(BaseOperator):
@@ -129,7 +109,6 @@ class DeleteRayCluster(BaseOperator):
         self,
         conn_id: str,
         ray_cluster_yaml: str,
-        ray_svc_yaml: str,
         use_gpu: bool = False,
         gpu_device_plugin_yaml: str = "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
         **kwargs: Any,
@@ -138,7 +117,6 @@ class DeleteRayCluster(BaseOperator):
         super().__init__(**kwargs)
         self.conn_id = conn_id
         self.ray_cluster_yaml = ray_cluster_yaml
-        self.ray_svc_yaml = ray_svc_yaml
         self.use_gpu = use_gpu
         self.gpu_device_plugin_yaml = gpu_device_plugin_yaml
 
@@ -153,16 +131,6 @@ class DeleteRayCluster(BaseOperator):
             raise AirflowException(f"The specified YAML file does not exist: {yaml_file}")
         elif not yaml_file.endswith((".yaml", ".yml")):
             raise AirflowException("The specified YAML file must have a .yaml or .yml extension.")
-
-    def _delete_ray_service(self) -> None:
-        if self.ray_svc_yaml:
-            ray_sv_spec = self.hook.load_yaml_content(self.ray_svc_yaml)
-            service_name = ray_sv_spec["metadata"]["name"]
-            self.log.info(f"Service name: {service_name}")
-
-            if self.hook.get_service(service_name):
-                self.log.info(f"Deleting service name: {service_name}")
-                self.hook.delete_service(service_name)
 
     def _delete_gpu_daemonset(self) -> None:
         gpu_driver = self.hook.load_yaml_content(self.gpu_device_plugin_yaml)
@@ -200,7 +168,6 @@ class DeleteRayCluster(BaseOperator):
 
     def execute(self, context: Context) -> None:
         try:
-            self._delete_ray_service()
             if self.use_gpu:
                 self._delete_gpu_daemonset()
             self._delete_ray_cluster()
@@ -241,6 +208,7 @@ class SubmitRayJob(BaseOperator):
         memory: int | float = 0,
         resources: dict[str, Any] | None = None,
         timeout: int = 600,
+        poll_interval: int = 60,
         xcom_task_key: str | None = None,
         **kwargs: Any,
     ):
@@ -253,6 +221,7 @@ class SubmitRayJob(BaseOperator):
         self.memory: int | float = memory
         self.ray_resources: dict[str, Any] | None = resources
         self.timeout: int | float = timeout
+        self.poll_interval: int = poll_interval
         self.xcom_task_key: str | None = xcom_task_key
         self.dashboard_url: str | None = None
         self.job_id: str = ""
@@ -292,7 +261,10 @@ class SubmitRayJob(BaseOperator):
             self.defer(
                 timeout=timedelta(hours=self.timeout),
                 trigger=RayJobTrigger(
-                    job_id=self.job_id, conn_id=self.conn_id, xcom_dashboard_url=self.dashboard_url, poll_interval=10
+                    job_id=self.job_id,
+                    conn_id=self.conn_id,
+                    xcom_dashboard_url=self.dashboard_url,
+                    poll_interval=self.poll_interval,
                 ),
                 method_name="execute_complete",
             )

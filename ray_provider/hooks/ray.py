@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import socket
 import subprocess
@@ -82,7 +84,6 @@ class RayHook(KubernetesHook):  # type: ignore
         self.namespace = self.get_namespace()
         self.kubeconfig = None
 
-        # Handle in-cluster and kubeconfig setup
         cluster_context = self._get_field("cluster_context")
         kubeconfig_path = self._get_field("kube_config_path")
         kubeconfig_content = self._get_field("kube_config")
@@ -191,25 +192,6 @@ class RayHook(KubernetesHook):  # type: ignore
         with open(path_or_link) as f:
             return yaml.safe_load(f)
 
-    def get_external_dns(self, service: client.V1Service) -> str | None:
-        if service and service.status.load_balancer.ingress and service.status.load_balancer.ingress[0].hostname:
-            external_dns: str = service.status.load_balancer.ingress[0].hostname
-            self.log.info(f"External DNS name found: {external_dns}")
-            return external_dns
-        else:
-            return None
-
-    def wait_for_external_dns(self, service_name: str, max_retries: int = 30, retry_interval: int = 40) -> str | None:
-        for attempt in range(max_retries):
-            self.log.info(f"Attempt {attempt + 1}: Checking for service's external DNS name...")
-            service = self.get_service(name=service_name)
-            dns_name: str | None = self.get_external_dns(service=service)
-            if dns_name:
-                return dns_name
-            self.log.info("External DNS name not yet available, waiting...")
-            time.sleep(retry_interval)
-        return None
-
     def _is_port_open(self, host: str, port: int) -> bool:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
@@ -220,33 +202,54 @@ class RayHook(KubernetesHook):  # type: ignore
         except OSError:
             return False
 
-    def _endpoints_are_ready(self, service_name: str) -> bool:
-        endpoints = self.get_endpoints(name=service_name)
-        if endpoints and endpoints.subsets and all([subset.addresses for subset in endpoints.subsets]):
-            return True
-        return False
+    def _get_service(self, name: str, namespace: str) -> client.V1Service:
+        """
+        Get the Kubernetes service.
+        """
+        try:
+            return self.core_v1_client.read_namespaced_service(name, namespace)
+        except client.exceptions.ApiException as e:
+            self.log.error(f"Error getting service {name}: {e}")
+            raise AirflowException(f"Service {name} not found")
 
-    def _all_ports_are_open(self, external_dns: str, service_name: str) -> bool:
-        endpoints = self.get_endpoints(name=service_name)
-        if not endpoints or not endpoints.subsets:
-            return False
+    def _get_load_balancer_details(self, service: client.V1Service) -> dict[str, Any] | None:
+        """
+        Extract LoadBalancer details from the service.
+        """
+        if service.status.load_balancer.ingress:
+            ingress: client.V1LoadBalancerIngress = service.status.load_balancer.ingress[0]
+            ip_or_hostname: str | None = ingress.ip or ingress.hostname
+            if ip_or_hostname:
+                ports: list[dict[str, Any]] = [{"name": port.name, "port": port.port} for port in service.spec.ports]
+                return {"ip_or_hostname": ip_or_hostname, "ports": ports}
+        return None
 
-        for subset in endpoints.subsets:
-            for port in subset.ports:
-                if not self._is_port_open(external_dns, port.port):
-                    return False
-        return True
+    def wait_for_load_balancer(
+        self,
+        service_name: str,
+        namespace: str = "default",
+        max_retries: int = 30,
+        retry_interval: int = 40,
+    ) -> dict[str, Any]:
+        """Wait for the LoadBalancer to be ready and return its details."""
+        for attempt in range(1, max_retries + 1):
+            self.log.info(f"Attempt {attempt}: Checking LoadBalancer status...")
+            try:
+                service: client.V1Service = self._get_service(service_name, namespace)
+                lb_details: dict[str, Any] | None = self._get_load_balancer_details(service)
 
-    def wait_for_endpoints(
-        self, external_dns: str, service_name: str, max_retries: int = 30, retry_interval: int = 40
-    ) -> bool:
-        for attempt in range(max_retries):
-            if self._endpoints_are_ready(service_name) and self._all_ports_are_open(external_dns, service_name):
-                self.log.info("All associated pods are ready.")
-                return True
-            self.log.info(f"Pods not ready, waiting... (Attempt {attempt + 1})")
+                if lb_details:
+                    hostname = lb_details["ip_or_hostname"]
+                    if all(self._is_port_open(hostname, port["port"]) for port in lb_details["ports"]):
+                        return lb_details
+
+                    self.log.info("Not all ports are open. Waiting...")
+            except AirflowException:
+                self.log.info("LoadBalancer service is not available yet...")
+
             time.sleep(retry_interval)
-        return False
+
+        raise AirflowException(f"LoadBalancer did not become ready after {max_retries} attempts")
 
     def _run_bash_command(self, command: str, env: dict[str, str] | None = None) -> tuple[str | None, str | None]:
         # Use the current environment variables if no custom environment is provided
@@ -311,7 +314,7 @@ class RayHook(KubernetesHook):  # type: ignore
             return api_response
         except client.exceptions.ApiException as e:
             if e.status == 404:
-                self.log.error(f"DaemonSet not found: {e}")
+                self.log.warning(f"DaemonSet not found: {e}")
                 return None
             else:
                 self.log.error(f"Exception when getting DaemonSet: {e}")
@@ -350,105 +353,4 @@ class RayHook(KubernetesHook):  # type: ignore
             return delete_response
         except client.exceptions.ApiException as e:
             self.log.error(f"Exception when deleting DaemonSet: {e}")
-            return None
-
-    def get_service(self, name: str) -> client.V1Service | None:
-        """
-        Retrieve a Service resource in Kubernetes.
-
-        :param name: The name of the Service.
-        :return: The Service resource.
-        """
-        try:
-            v1_service = self.core_v1_client.read_namespaced_service(name=name, namespace=self.namespace)
-            self.log.info(f"Service {v1_service.metadata.name} retrieved.")
-            return v1_service
-        except client.exceptions.ApiException as e:
-            if e.status == 404:
-                self.log.error(f"Service not found: {e}")
-                return None
-            self.log.error(f"Exception when getting service: {e}")
-            return None
-
-    def create_service(self, name: str, body: dict[str, Any]) -> client.V1Service | None:
-        """
-        Create a Service resource in Kubernetes.
-
-        :param name: The name of the Service.
-        :param body: The body of the Service for the create action.
-        :return: The Service resource.
-        """
-        if not body:
-            self.log.error("Body must be provided for create action.")
-            return None
-        try:
-            v1_service = self.core_v1_client.create_namespaced_service(namespace=self.namespace, body=body)
-            self.log.info(f"Service {v1_service.metadata.name} created.")
-            return v1_service
-        except client.exceptions.ApiException as e:
-            self.log.error(f"Exception when creating service: {e}")
-            return None
-
-    def delete_service(self, name: str) -> client.V1Status | None:
-        """
-        Delete a Service resource in Kubernetes.
-
-        :param name: The name of the Service.
-        :return: The status of the delete operation.
-        """
-        try:
-            delete_response = self.core_v1_client.delete_namespaced_service(name=name, namespace=self.namespace)
-            self.log.info(f"Service {name} deleted.")
-            return delete_response
-        except client.exceptions.ApiException as e:
-            self.log.error(f"Exception when deleting service: {e}")
-            return None
-
-    def get_endpoints(self, name: str) -> client.V1Endpoints | None:
-        """
-        Retrieve an Endpoints resource in Kubernetes.
-
-        :param name: The name of the Endpoints.
-        :return: The Endpoints resource.
-        """
-        try:
-            response = self.core_v1_client.read_namespaced_endpoints(name=name, namespace=self.namespace)
-            self.log.info(f"Retrieved endpoints {name} from namespace {self.namespace}.")
-            return response
-        except client.exceptions.ApiException as e:
-            self.log.error(f"Exception when getting endpoints: {e}")
-            return None
-
-    def create_endpoints(self, name: str, body: dict[str, Any]) -> client.V1Endpoints | None:
-        """
-        Create an Endpoints resource in Kubernetes.
-
-        :param name: The name of the Endpoints.
-        :param body: The body of the Endpoints for the create action.
-        :return: The Endpoints resource.
-        """
-        if not body:
-            self.log.error("Body must be provided for create action.")
-            return None
-        try:
-            response = self.core_v1_client.create_namespaced_endpoints(namespace=self.namespace, body=body)
-            self.log.info(f"Created endpoints {name} in namespace {self.namespace}.")
-            return response
-        except client.exceptions.ApiException as e:
-            self.log.error(f"Exception when creating endpoints: {e}")
-            return None
-
-    def delete_endpoints(self, name: str) -> client.V1Status | None:
-        """
-        Delete an Endpoints resource in Kubernetes.
-
-        :param name: The name of the Endpoints.
-        :return: The status of the delete operation.
-        """
-        try:
-            response = self.core_v1_client.delete_namespaced_endpoints(name=name, namespace=self.namespace)
-            self.log.info(f"Deleted endpoints {name} from namespace {self.namespace}.")
-            return response
-        except client.exceptions.ApiException as e:
-            self.log.error(f"Exception when deleting endpoints: {e}")
             return None

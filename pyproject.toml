@@ -24,7 +24,7 @@ classifiers = [
 dynamic = ["version"]
 requires-python = ">=3.8, <3.13"
 dependencies = [
-    "apache-airflow>=2.9",
+    "apache-airflow>=2.7",
     "ray[default]",
     "kubernetes",
     "requests",
@@ -81,11 +81,6 @@ pre-install-commands = ["sh scripts/test/pre-install-airflow.sh {matrix:airflow}
 python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
 airflow = ["2.7", "2.8", "2.9"]
 
-[tool.hatch.envs.tests.overrides]
-matrix.airflow.dependencies = [
-    { value = "typing_extensions<4.6", if = ["2.6"] }
-]
-
 [tool.hatch.envs.tests.scripts]
 freeze = "pip freeze"
 test = 'sh scripts/test/unit_test.sh'
@@ -116,7 +111,7 @@ serve = "sphinx-autobuild docs docs/_build"
 ######################################
 [tool.black]
 line-length = 120
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py38', 'py39', 'py310', 'py311','py312']
 
 [tool.isort]
 profile = "black"

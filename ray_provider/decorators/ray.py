@@ -4,16 +4,13 @@ import os
 import shutil
 import textwrap
 from tempfile import mkdtemp
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any, Callable
 
 from airflow.decorators.base import DecoratedOperator, TaskDecorator, task_decorator_factory
 from airflow.exceptions import AirflowException
 from airflow.utils.context import Context
 
 from ray_provider.operators.ray import SubmitRayJob
-
-if TYPE_CHECKING:
-    from airflow.utils.context import Context
 
 
 class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
