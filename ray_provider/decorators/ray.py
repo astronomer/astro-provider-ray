@@ -21,10 +21,8 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
     with the Ray SubmitRayJob operator, allowing users to define tasks that
     submit jobs to a Ray cluster.
 
-    :param custom_operator_name: Required. Custom operator name.
-    :param template_fields: Required. Fields that are template-able.
-    :param template_fields_renderers: Required. Fields renderers for templates.
-    :param config: Required. Configuration dictionary for the Ray job.
+    :param config: Configuration dictionary for the Ray job.
+    :param kwargs: Additional keyword arguments.
     """
 
     custom_operator_name = "@task.ray"
@@ -36,9 +34,8 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
     }
 
     def __init__(self, config: dict[str, Any], **kwargs: Any) -> None:
-        # Setting default values if not provided in the configuration
         self.conn_id: str = config.get("conn_id", "")
-        self.entrypoint: str = config.get("entrypoint", "python script.py")  # Default entrypoint if not provided
+        self.entrypoint: str = config.get("entrypoint", "python script.py")
         self.runtime_env: dict[str, Any] = config.get("runtime_env", {})
 
         self.num_cpus: int | float = config.get("num_cpus", 1)
@@ -46,12 +43,11 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         self.memory: int | float = config.get("memory", 0)
         self.config = config
 
-        if isinstance(self.num_cpus, str):
+        if not isinstance(self.num_cpus, (int, float)):
             raise TypeError("num_cpus should be an integer or float value")
-        if isinstance(self.num_gpus, str):
+        if not isinstance(self.num_gpus, (int, float)):
             raise TypeError("num_gpus should be an integer or float value")
 
-        # Ensuring we pass all necessary initialization parameters to the superclass
         super().__init__(
             conn_id=self.conn_id,
             entrypoint=self.entrypoint,
@@ -63,24 +59,21 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         )
 
     def execute(self, context: Context) -> Any:
-        tmp_dir = mkdtemp(prefix="ray_")  # Manually create a temp directory
+        """
+        Execute the Ray task.
+
+        :param context: The context in which the task is being executed.
+        :return: The result of the Ray job execution.
+        :raises AirflowException: If job submission fails.
+        """
+        tmp_dir = mkdtemp(prefix="ray_")
         try:
             py_source = self.get_python_source().splitlines()  # type: ignore
             function_body = textwrap.dedent("\n".join(py_source[1:]))
 
             script_filename = os.path.join(tmp_dir, "script.py")
             with open(script_filename, "w") as file:
-                # Creating a function call string with arguments from function_args
-                args_str = ", ".join(repr(arg) for arg in self.op_args)
-                kwargs_str = ", ".join(f"{k}={repr(v)}" for k, v in self.op_kwargs.items())
-                # Combine args_str and kwargs_str
-                if args_str and kwargs_str:
-                    all_args_str = f"{args_str}, {kwargs_str}"
-                elif args_str:
-                    all_args_str = args_str
-                else:
-                    all_args_str = kwargs_str
-
+                all_args_str = self._build_args_str()
                 script_body = f"{function_body}\n{self._extract_function_name()}({all_args_str})"
                 file.write(script_body)
 
@@ -88,19 +81,31 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
             self.runtime_env["working_dir"] = tmp_dir
             self.log.info("Running ray job...")
 
-            result = super().execute(context)  # Execute the job
+            result = super().execute(context)
+            return result
         except Exception as e:
             self.log.error(f"Failed during execution with error: {e}")
-            raise AirflowException("Job submission failed")
+            raise AirflowException("Job submission failed") from e
         finally:
-            # Cleanup: Delayed until after job execution confirmation
             if os.path.exists(tmp_dir):
                 shutil.rmtree(tmp_dir)
 
-        return result
+    def _build_args_str(self) -> str:
+        """
+        Build the argument string for the function call.
+
+        :return: A string representation of the function arguments.
+        """
+        args_str = ", ".join(repr(arg) for arg in self.op_args)
+        kwargs_str = ", ".join(f"{k}={repr(v)}" for k, v in self.op_kwargs.items())
+        return f"{args_str}, {kwargs_str}" if args_str and kwargs_str else args_str or kwargs_str
 
     def _extract_function_name(self) -> str:
-        # Directly using __name__ attribute to retrieve the function name
+        """
+        Extract the name of the Python callable.
+
+        :return: The name of the Python callable.
+        """
         return self.python_callable.__name__
 
 
@@ -112,14 +117,10 @@ def ray_task(
     """
     Decorator to define a task that submits a Ray job.
 
-    This decorator allows defining a task that submits a Ray job, handling multiple outputs if needed.
-
-    :param python_callable: Required. The callable function to decorate.
-    :param multiple_outputs: Optional. If True, will return multiple outputs.
+    :param python_callable: The callable function to decorate.
+    :param multiple_outputs: If True, will return multiple outputs.
     :param kwargs: Additional keyword arguments.
-
-    :returns: The decorated task.
-    :rtype: TaskDecorator
+    :return: The decorated task.
     """
     return task_decorator_factory(
         python_callable=python_callable,

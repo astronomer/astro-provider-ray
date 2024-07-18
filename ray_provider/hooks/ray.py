@@ -19,6 +19,9 @@ from ray.job_submission import JobStatus, JobSubmissionClient
 class RayHook(KubernetesHook):  # type: ignore
     """
     Airflow Hook for interacting with Ray Job Submission Client and Kubernetes Cluster.
+
+    :param conn_id: The connection ID to use when fetching connection info.
+    :param xcom_dashboard_url: The URL of the Ray dashboard (optional).
     """
 
     conn_name_attr = "ray_conn_id"
@@ -30,7 +33,7 @@ class RayHook(KubernetesHook):  # type: ignore
 
     @classmethod
     def get_ui_field_behaviour(cls) -> dict[str, Any]:
-        """Return custom field behaviour."""
+        """Return custom field behaviour for the connection form."""
         return {
             "hidden_fields": ["host", "schema", "login", "password", "port", "extra"],
             "relabeling": {},
@@ -71,7 +74,6 @@ class RayHook(KubernetesHook):  # type: ignore
     ) -> None:
         super().__init__(conn_id=conn_id)
 
-        # We check for address in 3 places -- Connection, Operator input param & Env variable
         self.address = self._get_field("address") or xcom_dashboard_url or os.getenv("RAY_ADDRESS")
         self.log.info(f"Ray cluster address is: {self.address}")
         self.create_cluster_if_needed = self._get_field("create_cluster_if_needed") or False
@@ -82,12 +84,18 @@ class RayHook(KubernetesHook):  # type: ignore
         self.ray_client_instance = None
 
         self.namespace = self.get_namespace()
-        self.kubeconfig = None
+        self.kubeconfig: str | None = None
 
         cluster_context = self._get_field("cluster_context")
         kubeconfig_path = self._get_field("kube_config_path")
         kubeconfig_content = self._get_field("kube_config")
 
+        self._setup_kubeconfig(kubeconfig_path, kubeconfig_content, cluster_context)
+
+    def _setup_kubeconfig(
+        self, kubeconfig_path: str | None, kubeconfig_content: str | None, cluster_context: str | None
+    ) -> None:
+        """Set up the kubeconfig for the hook."""
         num_selected_configuration = sum(1 for o in [kubeconfig_path, kubeconfig_content] if o)
         if num_selected_configuration > 1:
             raise AirflowException(
@@ -114,6 +122,9 @@ class RayHook(KubernetesHook):  # type: ignore
     def ray_client(self) -> JobSubmissionClient:
         """
         Establishes a connection to the Ray Job Submission Client.
+
+        :return: An instance of JobSubmissionClient.
+        :raises AirflowException: If the connection fails.
         """
         if not self.ray_client_instance:
             try:
@@ -144,6 +155,12 @@ class RayHook(KubernetesHook):  # type: ignore
         return str(job_id)
 
     def delete_ray_job(self, job_id: str) -> Any:
+        """
+        Deletes a job from the Ray cluster.
+
+        :param job_id: The ID of the job to delete.
+        :return: The result of the delete operation.
+        """
         client = self.ray_client
         self.log.info(f"Deleting job with ID: {job_id}")
         return client.delete_job(job_id=job_id)
@@ -184,6 +201,12 @@ class RayHook(KubernetesHook):  # type: ignore
             yield lines
 
     def load_yaml_content(self, path_or_link: str) -> Any:
+        """
+        Load YAML content from a file path or URL.
+
+        :param path_or_link: The file path or URL of the YAML content.
+        :return: The loaded YAML content.
+        """
         if path_or_link.startswith("http"):
             response = requests.get(path_or_link)
             response.raise_for_status()
@@ -193,18 +216,29 @@ class RayHook(KubernetesHook):  # type: ignore
             return yaml.safe_load(f)
 
     def _is_port_open(self, host: str, port: int) -> bool:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(1)
-        try:
-            s.connect((host, port))
-            s.close()
-            return True
-        except OSError:
-            return False
+        """
+        Check if a port is open on a given host.
+
+        :param host: The hostname or IP address to check.
+        :param port: The port number to check.
+        :return: True if the port is open, False otherwise.
+        """
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1)
+            try:
+                s.connect((host, port))
+                return True
+            except OSError:
+                return False
 
     def _get_service(self, name: str, namespace: str) -> client.V1Service:
         """
         Get the Kubernetes service.
+
+        :param name: The name of the service.
+        :param namespace: The namespace of the service.
+        :return: The Kubernetes service object.
+        :raises AirflowException: If the service is not found.
         """
         try:
             return self.core_v1_client.read_namespaced_service(name, namespace)
@@ -215,6 +249,9 @@ class RayHook(KubernetesHook):  # type: ignore
     def _get_load_balancer_details(self, service: client.V1Service) -> dict[str, Any] | None:
         """
         Extract LoadBalancer details from the service.
+
+        :param service: The Kubernetes service object.
+        :return: A dictionary containing LoadBalancer details if available, None otherwise.
         """
         if service.status.load_balancer.ingress:
             ingress: client.V1LoadBalancerIngress = service.status.load_balancer.ingress[0]
@@ -231,7 +268,16 @@ class RayHook(KubernetesHook):  # type: ignore
         max_retries: int = 30,
         retry_interval: int = 40,
     ) -> dict[str, Any]:
-        """Wait for the LoadBalancer to be ready and return its details."""
+        """
+        Wait for the LoadBalancer to be ready and return its details.
+
+        :param service_name: The name of the LoadBalancer service.
+        :param namespace: The namespace of the service.
+        :param max_retries: Maximum number of retries.
+        :param retry_interval: Interval between retries in seconds.
+        :return: A dictionary containing LoadBalancer details.
+        :raises AirflowException: If the LoadBalancer does not become ready within the specified retries.
+        """
         for attempt in range(1, max_retries + 1):
             self.log.info(f"Attempt {attempt}: Checking LoadBalancer status...")
             try:
@@ -252,20 +298,21 @@ class RayHook(KubernetesHook):  # type: ignore
         raise AirflowException(f"LoadBalancer did not become ready after {max_retries} attempts")
 
     def _run_bash_command(self, command: str, env: dict[str, str] | None = None) -> tuple[str | None, str | None]:
-        # Use the current environment variables if no custom environment is provided
+        """
+        Run a bash command with optional environment variables.
+
+        :param command: The bash command to run.
+        :param env: Optional dictionary of environment variables.
+        :return: A tuple containing the command's stdout and stderr.
+        """
         custom_env = os.environ.copy()
         if env:
             custom_env.update(env)
 
         try:
-            # Execute the bash command with the custom environment
             result = subprocess.run(command, shell=True, check=True, text=True, capture_output=True, env=custom_env)
-
-            # Print the standard output and standard error
             self.log.info("Standard Output: %s", result.stdout)
             self.log.info("Standard Error: %s", result.stderr)
-
-            # Return the command result
             return result.stdout, result.stderr
         except subprocess.CalledProcessError as e:
             self.log.error("An error occurred while executing the command: %s", e)
@@ -279,6 +326,10 @@ class RayHook(KubernetesHook):  # type: ignore
     ) -> tuple[str | None, str | None]:
         """
         Install KubeRay operator using Helm.
+
+        :param version: The version of KubeRay operator to install.
+        :param env: Optional dictionary of environment variables.
+        :return: A tuple containing the installation output and error (if any).
         """
         helm_command = f"""
             helm repo add kuberay https://ray-project.github.io/kuberay-helm/ && \
@@ -293,6 +344,8 @@ class RayHook(KubernetesHook):  # type: ignore
     def uninstall_kuberay_operator(self) -> tuple[str | None, str | None]:
         """
         Uninstall KubeRay operator using Helm.
+
+        :return: A tuple containing the uninstallation output and error (if any).
         """
         helm_command = f"""
             helm uninstall kuberay-operator --namespace {self.namespace} --kubeconfig {self.kubeconfig}
@@ -306,7 +359,7 @@ class RayHook(KubernetesHook):  # type: ignore
         Retrieve a DaemonSet resource in Kubernetes.
 
         :param name: The name of the DaemonSet.
-        :return: The DaemonSet resource.
+        :return: The DaemonSet resource if found, None otherwise.
         """
         try:
             api_response = self.apps_v1_client.read_namespaced_daemon_set(name, self.namespace)
@@ -318,7 +371,7 @@ class RayHook(KubernetesHook):  # type: ignore
                 return None
             else:
                 self.log.error(f"Exception when getting DaemonSet: {e}")
-                raise e
+                raise
 
     def create_daemon_set(self, name: str, body: dict[str, Any]) -> client.V1DaemonSet | None:
         """
@@ -326,7 +379,7 @@ class RayHook(KubernetesHook):  # type: ignore
 
         :param name: The name of the DaemonSet.
         :param body: The body of the DaemonSet for the create action.
-        :return: The DaemonSet resource.
+        :return: The created DaemonSet resource if successful, None otherwise.
         """
         if not body:
             self.log.error("Body must be provided for create action.")
@@ -345,7 +398,7 @@ class RayHook(KubernetesHook):  # type: ignore
         Delete a DaemonSet resource in Kubernetes.
 
         :param name: The name of the DaemonSet.
-        :return: The status of the delete operation.
+        :return: The status of the delete operation if successful, None otherwise.
         """
         try:
             delete_response = self.apps_v1_client.delete_namespaced_daemon_set(name=name, namespace=self.namespace)
