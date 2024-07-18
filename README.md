@@ -23,6 +23,15 @@ These operators have been tested with the below versions. They will most likely 
 | 3.11           | 2.9.0           | 2.23.0      |
 
 
+### Compatibility
+
+These operators have been tested with the below versions. They will most likely be compatible with future versions but have not yet been tested.
+
+| Python Version | Airflow Version | Ray Version |
+|----------------|-----------------|-------------|
+| 3.11           | 2.9.0           | 2.23.0      |
+
+
 ### Example Usage
 
 The provided `setup_teardown.py` script demonstrates how to configure and use the `SetupRayCluster`, `DeleteRayCluster` and the `SubmitRayJob` operators within an Airflow DAG:
