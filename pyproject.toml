@@ -30,7 +30,8 @@ dependencies = [
     "requests",
     "pytest",
     "PyYAML",
-    "pytest-asyncio"
+    "pytest-asyncio",
+    "apache-airflow-providers-cncf-kubernetes"
 ]
 
 [project.urls]
@@ -71,6 +72,7 @@ dependencies = [
     "types-requests",
     "types-python-dateutil",
     "apache-airflow=={matrix:airflow}.0",
+    "apache-airflow-providers-cncf-kubernetes",
     "pytest>=6.0",
     "pytest-cov",
     "pre-commit"
