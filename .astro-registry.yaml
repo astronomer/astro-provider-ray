@@ -1,15 +1,18 @@
 package-name: astro-provider-ray
-
-display-name: Kuberay
+display-name: Ray
 
 docs-url: https://github.com/astronomer/astro-provider-ray/blob/main/README.md
 
+hooks:
+  - module: ray_provider.hooks.ray.RayHook
+
 decorators:
-  - module: ray_provider.decorators.kuberay.ray_task
+  - module: ray_provider.decorators.ray.ray_task
 
 operators:
-  - module: ray_provider.operators.kuberay.RayClusterOperator
-  - module: ray_provider.operators.kuberay.SubmitRayJob
+  - module: ray_provider.operators.ray.SetupRayCluster
+  - module: ray_provider.operators.ray.SubmitRayJob
+  - module: ray_provider.operators.ray.DeleteRayCluster
 
 triggers:
-  - module: ray_provider.triggers.kuberay.RayJobTrigger
+  - module: ray_provider.triggers.ray.RayJobTrigger

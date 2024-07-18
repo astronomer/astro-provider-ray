@@ -1,33 +1,37 @@
 [build-system]
-requires = [
-    "setuptools",
-    "wheel"
-]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "astro-provider-ray"
-authors = [
-    { name = "Venkata Jagannath", email = "venkat@astronomer.io" },
-    { name = "Astronomer", email = "humans@astronomer.io" },
-
-]
+authors = [{ name = "Astronomer", email = "humans@astronomer.io" }]
 license = { text = "Apache License 2.0" }
 description = "An Apache Airflow provider package built by Astronomer to integrate with Ray."
 classifiers = [
     "Framework :: Apache Airflow",
     "Framework :: Apache Airflow :: Provider",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
-dynamic = [
-    "version"
-]
-requires-python = "~=3.8"
+dynamic = ["version"]
+requires-python = ">=3.8, <3.13"
 dependencies = [
-    "apache-airflow>=2.9",
+    "apache-airflow>=2.7",
     "ray[default]",
     "kubernetes",
     "requests",
-    "pytest-asyncio"
+    "pytest",
+    "PyYAML",
+    "pytest-asyncio",
+    "apache-airflow-providers-cncf-kubernetes"
 ]
 
 [project.urls]
@@ -41,28 +45,79 @@ content-type = "text/markdown"
 [project.entry-points.apache_airflow_provider]
 provider_info = "ray_provider.__init__:get_provider_info"
 
-[tool.setuptools]
-include-package-data = false
+[tool.hatch.version]
+path = "ray_provider/__init__.py"
 
-[tool.setuptools.dynamic]
-version = { attr = "ray_provider.__version__" }
+[tool.hatch.build.targets.sdist]
+include = ["/ray_provider"]
 
-[tool.setuptools.packages.find]
-exclude = [
-    "*tests.*",
-    "*tests"
+[tool.hatch.build.targets.wheel]
+packages = ["/ray_provider"]
+
+docs = [
+    "sphinx",
+    "pydata-sphinx-theme",
+    "sphinx-autobuild",
+    "sphinx-autoapi",
 ]
+
+######################################
+# TESTING
+######################################
+
+[tool.hatch.envs.tests]
+dependencies = [
+    "types-PyYAML",
+    "types-attrs",
+    "types-requests",
+    "types-python-dateutil",
+    "apache-airflow=={matrix:airflow}.0",
+    "apache-airflow-providers-cncf-kubernetes",
+    "pytest>=6.0",
+    "pytest-cov",
+    "pre-commit"
+]
+pre-install-commands = ["sh scripts/test/pre-install-airflow.sh {matrix:airflow} {matrix:python}"]
+
+[[tool.hatch.envs.tests.matrix]]
+python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
+airflow = ["2.7", "2.8", "2.9"]
+
+[tool.hatch.envs.tests.scripts]
+freeze = "pip freeze"
+test = 'sh scripts/test/unit_test.sh'
+test-cov = 'sh scripts/test/unit_cov.sh'
+test-integration = 'sh scripts/test/integration_test.sh'
+static-check = "pre-commit run --all-files"
+
+######################################
+# DOCS
+######################################
+
+[tool.hatch.envs.docs]
+dependencies = [
+    "aenum",
+    "pydantic>=1.10.0",
+    "pydata-sphinx-theme",
+    "sphinx",
+    "sphinx-autoapi",
+    "sphinx-autobuild",
+]
+
+[tool.hatch.envs.docs.scripts]
+build = "sphinx-build -b html docs docs/_build"
+serve = "sphinx-autobuild docs docs/_build"
 
 ######################################
 # THIRD PARTY TOOLS
 ######################################
 [tool.black]
 line-length = 120
-target-version = ['py37', 'py38', 'py39', 'py310']
+target-version = ['py38', 'py39', 'py310', 'py311','py312']
 
 [tool.isort]
 profile = "black"
-known_third_party = ["airflow", "jinja2"]
+known_third_party = ["airflow"]
 
 [tool.mypy]
 strict = true
@@ -75,7 +130,7 @@ line-length = 120
 select = ["C901", "I", "F"]
 ignore = ["F541"]
 [tool.ruff.lint.mccabe]
-max-complexity = 10
+max-complexity = 7
 
 [tool.distutils.bdist_wheel]
 universal = true
