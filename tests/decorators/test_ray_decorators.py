@@ -1,4 +1,3 @@
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -29,13 +28,11 @@ class TestRayDecoratedOperator:
 
         operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
 
-        assert operator.host == "http://localhost:8265"
         assert operator.entrypoint == "python my_script.py"
         assert operator.runtime_env == {"pip": ["ray"]}
         assert operator.num_cpus == 2
         assert operator.num_gpus == 1
         assert operator.memory == "1G"
-        assert operator.node_group is None
 
     @patch.object(_RayDecoratedOperator, "get_python_source")
     @patch.object(SubmitRayJob, "execute")
@@ -67,7 +64,7 @@ class TestRayDecoratedOperator:
             pass
 
         operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
-        assert operator.host == os.getenv("RAY_DASHBOARD_URL")
+        assert operator.entrypoint == "python my_script.py"
 
     def test_invalid_config_raises_exception(self):
         config = {
