@@ -53,6 +53,7 @@ class RayHook(KubernetesHook):  # type: ignore
             "metadata": StringField(lazy_gettext("Ray job metadata"), widget=BS3TextFieldWidget()),
             "headers": StringField(lazy_gettext("Ray job headers"), widget=BS3TextFieldWidget()),
             "verify": BooleanField(lazy_gettext("Ray job verify")),
+            "in_cluster": BooleanField(lazy_gettext("In cluster configuration")),
             "kube_config_path": StringField(lazy_gettext("Kube config path"), widget=BS3TextFieldWidget()),
             "kube_config": PasswordField(lazy_gettext("Kube config (JSON format)"), widget=BS3PasswordFieldWidget()),
             "namespace": StringField(lazy_gettext("Namespace"), widget=BS3TextFieldWidget()),
@@ -86,20 +87,25 @@ class RayHook(KubernetesHook):  # type: ignore
         self.namespace = self.get_namespace()
         self.kubeconfig: str | None = None
 
+        in_cluster = self._get_field("in_cluster")
         cluster_context = self._get_field("cluster_context")
         kubeconfig_path = self._get_field("kube_config_path")
         kubeconfig_content = self._get_field("kube_config")
 
-        self._setup_kubeconfig(kubeconfig_path, kubeconfig_content, cluster_context)
+        self._setup_kubeconfig(kubeconfig_path, in_cluster, kubeconfig_content, cluster_context)
 
     def _setup_kubeconfig(
-        self, kubeconfig_path: str | None, kubeconfig_content: str | None, cluster_context: str | None
+        self,
+        kubeconfig_path: str | None,
+        in_cluster: bool | None,
+        kubeconfig_content: str | None,
+        cluster_context: str | None,
     ) -> None:
         """Set up the kubeconfig for the hook."""
-        num_selected_configuration = sum(1 for o in [kubeconfig_path, kubeconfig_content] if o)
+        num_selected_configuration = sum(1 for o in [in_cluster, kubeconfig_path, kubeconfig_content] if o)
         if num_selected_configuration > 1:
             raise AirflowException(
-                "Invalid connection configuration. Options kube_config_path and "
+                "Invalid connection configuration. Options in_cluster, kube_config_path and "
                 "kube_config are mutually exclusive. "
                 "You can only use one option at a time."
             )
@@ -117,6 +123,35 @@ class RayHook(KubernetesHook):  # type: ignore
                 temp_config.flush()
                 self.kubeconfig = temp_config.name
                 config.load_kube_config(config_file=self.kubeconfig, context=cluster_context)
+        elif in_cluster:
+            self.log.debug("Loading kubeconfig from in_cluster")
+            self._is_in_cluster = True
+            self._get_in_cluster_kubeconfig()
+        else:
+            self.log.debug("Using default kubeconfig")
+            config.load_kube_config(context=cluster_context)
+            self._is_in_cluster = False
+
+    def _get_in_cluster_kubeconfig(self) -> None:
+        try:
+            config.load_incluster_config()
+
+            kube_config = client.Configuration.get_default_copy()
+
+            api_client = client.ApiClient(kube_config)
+
+            kubeconfig_dict = api_client.configuration.to_dict()
+
+            kubeconfig_yaml = config.kube_config.KubeConfigMerger(kubeconfig_dict).dump()
+
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+                temp_file.write(kubeconfig_yaml)
+                self.kubeconfig = temp_file.name
+
+            self.log.info(f"In-cluster kubeconfig has been written to {self.kubeconfig}")
+        except config.config_exception.ConfigException:
+            self.log.error("Unable to load in-cluster configuration. Are you running this inside a Kubernetes pod?")
+            raise AirflowException("Failed to load in-cluster kubeconfig")
 
     @cached_property
     def ray_client(self) -> JobSubmissionClient:
