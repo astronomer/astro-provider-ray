@@ -110,8 +110,11 @@ class SetupRayCluster(BaseOperator):
     def execute(self, context: Context) -> None:
         """Execute the operator to set up the Ray cluster."""
         try:
+            self.log.info("::group::Add KubeRay operator")
             self.hook.install_kuberay_operator(version=self.kuberay_version)
+            self.log.info("::endgroup::")
 
+            self.log.info("::group::Create Ray Cluster")
             self.log.info("Loading yaml content for Ray cluster CRD...")
             cluster_spec = self.hook.load_yaml_content(self.ray_cluster_yaml)
 
@@ -123,11 +126,14 @@ class SetupRayCluster(BaseOperator):
             group, version = api_version.split("/") if "/" in api_version else ("", api_version)
 
             self._create_or_update_cluster(group, version, plural, name, namespace, cluster_spec)
+            self.log.info("::endgroup::")
 
             if self.use_gpu:
                 self._setup_gpu_driver()
 
+            self.log.info("::group::Setup Load Balancer service")
             self._setup_load_balancer(name, namespace, context)
+            self.log.info("::endgroup::")
 
         except Exception as e:
             self.log.error(f"Error setting up Ray cluster: {e}")
@@ -210,7 +216,9 @@ class DeleteRayCluster(BaseOperator):
         try:
             if self.use_gpu:
                 self._delete_gpu_daemonset()
+            self.log.info("::group:: Delete Ray Cluster")
             self._delete_ray_cluster()
+            self.log.info("::endgroup::")
             self.hook.uninstall_kuberay_operator()
         except Exception as e:
             self.log.error(f"Error deleting Ray cluster: {e}")
@@ -314,7 +322,6 @@ class SubmitRayJob(BaseOperator):
             if current_status not in self.terminal_state:
                 self.log.info("Deferring the polling to RayJobTrigger...")
                 self.defer(
-                    timeout=timedelta(seconds=self.job_timeout_seconds),
                     trigger=RayJobTrigger(
                         job_id=self.job_id,
                         conn_id=self.conn_id,
@@ -323,6 +330,7 @@ class SubmitRayJob(BaseOperator):
                         fetch_logs=self.fetch_logs,
                     ),
                     method_name="execute_complete",
+                    timeout=timedelta(seconds=self.job_timeout_seconds),
                 )
             elif current_status == JobStatus.SUCCEEDED:
                 self.log.info("Job %s completed successfully", self.job_id)
@@ -343,10 +351,10 @@ class SubmitRayJob(BaseOperator):
         :param event: The event containing the job execution result.
         :raises AirflowException: If the job execution fails or is cancelled.
         """
-        if event["status"] in ["error", "cancelled"]:
+        if event["status"] in [JobStatus.STOPPED, JobStatus.FAILED]:
             self.log.info(f"Ray job {self.job_id} execution not completed...")
             raise AirflowException(event["message"])
-        elif event["status"] == "success":
+        elif event["status"] == JobStatus.SUCCEEDED:
             self.log.info(f"Ray job {self.job_id} execution succeeded ...")
         else:
             raise AirflowException(f"Unexpected event status: {event['status']}")

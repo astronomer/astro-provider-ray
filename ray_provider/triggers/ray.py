@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from functools import cached_property
+from functools import cached_property, partial
 from typing import Any, AsyncIterator
 
 from airflow.triggers.base import BaseTrigger, TriggerEvent
@@ -51,6 +51,7 @@ class RayJobTrigger(BaseTrigger):
                 "job_id": self.job_id,
                 "conn_id": self.conn_id,
                 "xcom_dashboard_url": self.dashboard_url,
+                "fetch_logs": self.fetch_logs,
                 "poll_interval": self.poll_interval,
             },
         )
@@ -79,39 +80,27 @@ class RayJobTrigger(BaseTrigger):
             while not self._is_terminal_state():
                 await asyncio.sleep(self.poll_interval)
 
+            self.log.info(f"Fetch logs flag is set to : {self.fetch_logs}")
             if self.fetch_logs:
                 # Stream logs if available
-                async for multi_line in self.hook.get_ray_tail_logs(self.job_id):
-                    print(multi_line)
+                loop = asyncio.get_event_loop()
+                logs = await loop.run_in_executor(None, partial(self.hook.get_ray_job_logs, job_id=self.job_id))
+                self.log.info(f"::group::{self.job_id} logs")
+                for log in logs.split("\n"):
+                    self.log.info(log)
+                self.log.info("::endgroup::")
 
             completed_status = self.hook.get_ray_job_status(self.job_id)
             self.log.info(f"Status of completed job {self.job_id} is: {completed_status}")
-            if completed_status == JobStatus.SUCCEEDED:
-                yield TriggerEvent(
-                    {
-                        "status": "success",
-                        "message": f"Job run {self.job_id} has completed successfully.",
-                        "job_id": self.job_id,
-                    }
-                )
-            elif completed_status == JobStatus.STOPPED:
-                yield TriggerEvent(
-                    {
-                        "status": "cancelled",
-                        "message": f"Job run {self.job_id} has been stopped.",
-                        "job_id": self.job_id,
-                    }
-                )
-            else:
-                yield TriggerEvent(
-                    {
-                        "status": "error",
-                        "message": f"Job run {self.job_id} has failed.",
-                        "job_id": self.job_id,
-                    }
-                )
+            yield TriggerEvent(
+                {
+                    "status": completed_status,
+                    "message": f"Job {self.job_id} completed with status {completed_status}",
+                    "job_id": self.job_id,
+                }
+            )
         except Exception as e:
-            yield TriggerEvent({"status": "error", "message": str(e), "job_id": self.job_id})
+            yield TriggerEvent({"status": str(JobStatus.FAILED), "message": str(e), "job_id": self.job_id})
 
     def _is_terminal_state(self) -> bool:
         """
