@@ -294,10 +294,21 @@ class RayHook(KubernetesHook):  # type: ignore
 
                 if lb_details:
                     hostname = lb_details["ip_or_hostname"]
-                    if all(self._is_port_open(hostname, port["port"]) for port in lb_details["ports"]):
-                        return lb_details
+                    all_ports_open = True
+                    for port in lb_details["ports"]:
+                        if not self._is_port_open(hostname, port["port"]):
+                            self.log.info(f"Port {port['port']} is not open yet.")
+                            all_ports_open = False
+                            break
 
-                    self.log.info("Not all ports are open. Waiting...")
+                    if all_ports_open:
+                        self.log.info("All ports are open. LoadBalancer is ready.")
+                        return lb_details
+                    else:
+                        self.log.info("Not all ports are open. Waiting...")
+                else:
+                    self.log.info("LoadBalancer details not available yet.")
+
             except AirflowException:
                 self.log.info("LoadBalancer service is not available yet...")
 
