@@ -54,7 +54,7 @@ class TestRayHook:
         from wtforms import BooleanField, PasswordField, StringField
 
         expected_widgets = {
-            "address": StringField(lazy_gettext("Ray dashboard URL"), widget=BS3TextFieldWidget()),
+            "address": StringField(lazy_gettext("Ray dashboard url"), widget=BS3TextFieldWidget()),
             "create_cluster_if_needed": BooleanField(lazy_gettext("Create cluster if needed")),
             "cookies": StringField(lazy_gettext("Cookies"), widget=BS3TextFieldWidget()),
             "metadata": StringField(lazy_gettext("Metadata"), widget=BS3TextFieldWidget()),
