@@ -47,12 +47,12 @@ class RayHook(KubernetesHook):  # type: ignore
         from wtforms import BooleanField, PasswordField, StringField
 
         return {
-            "address": StringField(lazy_gettext("Ray address path"), widget=BS3TextFieldWidget()),
+            "address": StringField(lazy_gettext("Ray dashboard URL"), widget=BS3TextFieldWidget()),
             "create_cluster_if_needed": BooleanField(lazy_gettext("Create cluster if needed")),
-            "cookies": StringField(lazy_gettext("Ray job cookies"), widget=BS3TextFieldWidget()),
-            "metadata": StringField(lazy_gettext("Ray job metadata"), widget=BS3TextFieldWidget()),
-            "headers": StringField(lazy_gettext("Ray job headers"), widget=BS3TextFieldWidget()),
-            "verify": BooleanField(lazy_gettext("Ray job verify")),
+            "cookies": StringField(lazy_gettext("Cookies"), widget=BS3TextFieldWidget()),
+            "metadata": StringField(lazy_gettext("Metadata"), widget=BS3TextFieldWidget()),
+            "headers": StringField(lazy_gettext("Headers"), widget=BS3TextFieldWidget()),
+            "verify": BooleanField(lazy_gettext("Verify")),
             "kube_config_path": StringField(lazy_gettext("Kube config path"), widget=BS3TextFieldWidget()),
             "kube_config": PasswordField(lazy_gettext("Kube config (JSON format)"), widget=BS3PasswordFieldWidget()),
             "namespace": StringField(lazy_gettext("Namespace"), widget=BS3TextFieldWidget()),
