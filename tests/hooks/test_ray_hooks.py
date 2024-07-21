@@ -128,7 +128,10 @@ class TestRayHook:
     @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
     @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
     @patch("ray_provider.hooks.ray.client.AppsV1Api.read_namespaced_daemon_set")
-    def test_get_daemon_set(self, mock_read_daemon_set, mock_kubernetes_init, mock_get_connection):
+    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    def test_get_daemon_set(
+        self, mock_load_kube_config, mock_read_daemon_set, mock_kubernetes_init, mock_get_connection
+    ):
         mock_kubernetes_init.return_value = None
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
 
@@ -145,11 +148,15 @@ class TestRayHook:
     @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
     @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
     @patch("ray_provider.hooks.ray.client.AppsV1Api.create_namespaced_daemon_set")
-    def test_create_daemon_set(self, mock_create_daemon_set, mock_kubernetes_init, mock_get_connection):
+    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    def test_create_daemon_set(
+        self, mock_load_kube_config, mock_create_daemon_set, mock_kubernetes_init, mock_get_connection
+    ):
         mock_kubernetes_init.return_value = None
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
 
-        mock_metadata = MagicMock(name="metadata")
+        # Configure the mock to return the expected values
+        mock_metadata = MagicMock()
         mock_metadata.name = "test-daemonset"
         mock_create_daemon_set.return_value = MagicMock(metadata=mock_metadata)
 
@@ -162,7 +169,10 @@ class TestRayHook:
     @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
     @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
     @patch("ray_provider.hooks.ray.client.AppsV1Api.delete_namespaced_daemon_set")
-    def test_delete_daemon_set(self, mock_delete_daemon_set, mock_kubernetes_init, mock_get_connection):
+    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    def test_delete_daemon_set(
+        self, mock_load_kube_config, mock_delete_daemon_set, mock_kubernetes_init, mock_get_connection
+    ):
         mock_kubernetes_init.return_value = None
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
         mock_delete_daemon_set.return_value = MagicMock(status="Success")
