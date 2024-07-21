@@ -8,6 +8,21 @@ from ray_provider.hooks.ray import RayHook
 class TestRayHook:
 
     @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
+    def test_init(self, mock_kubernetes_init, mock_get_connection):
+        mock_kubernetes_init.return_value = None
+        mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
+
+        hook = RayHook(conn_id="test_conn", xcom_dashboard_url="http://test-url")
+
+        # Assert that the parent class's __init__ was called with the correct arguments
+        mock_kubernetes_init.assert_called_once_with(conn_id="test_conn")
+
+        # Assert that the RayHook attributes are set correctly
+        assert hook.conn_id == "test_conn"
+        assert hook.xcom_dashboard_url == "http://test-url"
+
+    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
     @patch("ray_provider.hooks.ray.JobSubmissionClient")
     def test_ray_client(self, mock_job_client, mock_get_connection):
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
@@ -81,3 +96,78 @@ class TestRayHook:
         hook = RayHook(conn_id="test_conn")
         result = hook._is_port_open("localhost", 8080)
         assert result is True
+
+    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.ray.subprocess.run")
+    def test_install_kuberay_operator(self, mock_subprocess_run, mock_kubernetes_init, mock_get_connection):
+        mock_kubernetes_init.return_value = None
+        mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
+        mock_subprocess_run.return_value = MagicMock(stdout="install output", stderr="")
+
+        hook = RayHook(conn_id="test_conn")
+        stdout, stderr = hook.install_kuberay_operator(version="1.0.0")
+
+        assert "install output" in stdout
+        assert stderr == ""
+
+    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.ray.subprocess.run")
+    def test_uninstall_kuberay_operator(self, mock_subprocess_run, mock_kubernetes_init, mock_get_connection):
+        mock_kubernetes_init.return_value = None
+        mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
+        mock_subprocess_run.return_value = MagicMock(stdout="uninstall output", stderr="")
+
+        hook = RayHook(conn_id="test_conn")
+        stdout, stderr = hook.uninstall_kuberay_operator()
+
+        assert "uninstall output" in stdout
+        assert stderr == ""
+
+    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.ray.client.AppsV1Api.read_namespaced_daemon_set")
+    def test_get_daemon_set(self, mock_read_daemon_set, mock_kubernetes_init, mock_get_connection):
+        mock_kubernetes_init.return_value = None
+        mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
+
+        # Configure the mock to return the expected values
+        mock_metadata = MagicMock()
+        mock_metadata.name = "test-daemonset"
+        mock_read_daemon_set.return_value = MagicMock(metadata=mock_metadata)
+
+        hook = RayHook(conn_id="test_conn")
+        daemon_set = hook.get_daemon_set(name="test-daemonset")
+
+        assert daemon_set.metadata.name == "test-daemonset"
+
+    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.ray.client.AppsV1Api.create_namespaced_daemon_set")
+    def test_create_daemon_set(self, mock_create_daemon_set, mock_kubernetes_init, mock_get_connection):
+        mock_kubernetes_init.return_value = None
+        mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
+
+        mock_metadata = MagicMock(name="metadata")
+        mock_metadata.name = "test-daemonset"
+        mock_create_daemon_set.return_value = MagicMock(metadata=mock_metadata)
+
+        hook = RayHook(conn_id="test_conn")
+        body = {"metadata": {"name": "test-daemonset"}}
+        daemon_set = hook.create_daemon_set(name="test-daemonset", body=body)
+
+        assert daemon_set.metadata.name == "test-daemonset"
+
+    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.ray.client.AppsV1Api.delete_namespaced_daemon_set")
+    def test_delete_daemon_set(self, mock_delete_daemon_set, mock_kubernetes_init, mock_get_connection):
+        mock_kubernetes_init.return_value = None
+        mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
+        mock_delete_daemon_set.return_value = MagicMock(status="Success")
+
+        hook = RayHook(conn_id="test_conn")
+        response = hook.delete_daemon_set(name="test-daemonset")
+
+        assert response.status == "Success"

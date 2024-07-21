@@ -73,8 +73,10 @@ class RayHook(KubernetesHook):  # type: ignore
         xcom_dashboard_url: str | None = None,
     ) -> None:
         super().__init__(conn_id=conn_id)
+        self.conn_id = conn_id
+        self.xcom_dashboard_url = xcom_dashboard_url
 
-        self.address = self._get_field("address") or xcom_dashboard_url or os.getenv("RAY_ADDRESS")
+        self.address = self._get_field("address") or self.xcom_dashboard_url or os.getenv("RAY_ADDRESS")
         self.log.info(f"Ray cluster address is: {self.address}")
         self.create_cluster_if_needed = self._get_field("create_cluster_if_needed") or False
         self.cookies = self._get_field("cookies")
@@ -85,12 +87,18 @@ class RayHook(KubernetesHook):  # type: ignore
 
         self.namespace = self.get_namespace()
         self.kubeconfig: str | None = None
+        self.in_cluster: bool | None = None
+        self.client_configuration = None
+        self.config_file = None
+        self.disable_verify_ssl = None
+        self.disable_tcp_keepalive = None
+        self._is_in_cluster: bool | None = None
 
-        cluster_context = self._get_field("cluster_context")
-        kubeconfig_path = self._get_field("kube_config_path")
-        kubeconfig_content = self._get_field("kube_config")
+        self.cluster_context = self._get_field("cluster_context")
+        self.kubeconfig_path = self._get_field("kube_config_path")
+        self.kubeconfig_content = self._get_field("kube_config")
 
-        self._setup_kubeconfig(kubeconfig_path, kubeconfig_content, cluster_context)
+        self._setup_kubeconfig(self.kubeconfig_path, self.kubeconfig_content, self.cluster_context)
 
     def _setup_kubeconfig(
         self, kubeconfig_path: str | None, kubeconfig_content: str | None, cluster_context: str | None
