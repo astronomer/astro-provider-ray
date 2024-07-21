@@ -29,7 +29,7 @@ class TestRayJobTrigger:
         mock_hook.get_ray_job_status.return_value = JobStatus.SUCCEEDED
         trigger = RayJobTrigger(job_id="test_job_id", poll_interval=1, conn_id="test", xcom_dashboard_url="test")
         generator = trigger.run()
-        event = await anext(generator)
+        event = await generator.asend(None)
         assert event == TriggerEvent(
             {
                 "status": JobStatus.SUCCEEDED,
