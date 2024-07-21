@@ -24,11 +24,19 @@ class RayJobTrigger(BaseTrigger):
     :param poll_interval: The interval in seconds at which to poll the job status. Defaults to 30 seconds.
     """
 
-    def __init__(self, job_id: str, conn_id: str, xcom_dashboard_url: str | None, poll_interval: int = 30):
+    def __init__(
+        self,
+        job_id: str,
+        conn_id: str,
+        xcom_dashboard_url: str | None,
+        poll_interval: int = 30,
+        fetch_logs: bool = True,
+    ):
         super().__init__()  # type: ignore[no-untyped-call]
         self.job_id = job_id
         self.conn_id = conn_id
         self.dashboard_url = xcom_dashboard_url
+        self.fetch_logs = fetch_logs
         self.poll_interval = poll_interval
 
     def serialize(self) -> tuple[str, dict[str, Any]]:
@@ -71,9 +79,10 @@ class RayJobTrigger(BaseTrigger):
             while not self._is_terminal_state():
                 await asyncio.sleep(self.poll_interval)
 
-            # Stream logs if available
-            async for multi_line in self.hook.get_ray_tail_logs(self.job_id):
-                self.log.info(multi_line)
+            if self.fetch_logs:
+                # Stream logs if available
+                async for multi_line in self.hook.get_ray_tail_logs(self.job_id):
+                    print(multi_line)
 
             completed_status = self.hook.get_ray_job_status(self.job_id)
             self.log.info(f"Status of completed job {self.job_id} is: {completed_status}")
