@@ -73,7 +73,7 @@ class TestSetupRayCluster:
         operator.hook = mock_hook
         operator._create_or_update_cluster("test_group", "v1", "rayclusters", "test-cluster", "default", {})
 
-        mock_hook.patch_custom_object.assert_called_once()
+        mock_hook.custom_object_client.patch_namespaced_custom_object.assert_called_once()
 
     def test_setup_gpu_driver(self, mock_hook, operator):
         mock_hook.load_yaml_content.return_value = {"metadata": {"name": "gpu-plugin"}}

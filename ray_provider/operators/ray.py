@@ -35,6 +35,7 @@ class SetupRayCluster(BaseOperator):
         use_gpu: bool = False,
         kuberay_version: str = "1.0.0",
         gpu_device_plugin_yaml: str = "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
+        update_if_exists: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -43,6 +44,7 @@ class SetupRayCluster(BaseOperator):
         self.use_gpu = use_gpu
         self.kuberay_version = kuberay_version
         self.gpu_device_plugin_yaml = gpu_device_plugin_yaml
+        self.update_if_exists = update_if_exists
 
         self._validate_yaml_file(ray_cluster_yaml)
 
@@ -71,7 +73,7 @@ class SetupRayCluster(BaseOperator):
         try:
             self.hook.get_custom_object(group=group, version=version, plural=plural, name=name, namespace=namespace)
             self.log.info(f"Updating existing Ray cluster: {name}")
-            self.hook.patch_custom_object(
+            self.hook.custom_object_client.patch_namespaced_custom_object(
                 group=group, version=version, namespace=namespace, plural=plural, name=name, body=cluster_spec
             )
         except client.exceptions.ApiException as e:
