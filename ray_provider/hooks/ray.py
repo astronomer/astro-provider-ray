@@ -194,7 +194,6 @@ class RayHook(KubernetesHook):  # type: ignore
         """
         client = self.ray_client
         logs = client.get_job_logs(job_id=job_id)
-        self.log.info(f"Logs for job {job_id}: {logs}")
         return str(logs)
 
     async def get_ray_tail_logs(self, job_id: str) -> AsyncIterator[str]:
