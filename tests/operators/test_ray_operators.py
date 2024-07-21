@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from airflow.exceptions import AirflowException, TaskDeferred
+from ray.job_submission import JobStatus
 
 from ray_provider.operators.ray import SubmitRayJob
 
@@ -65,13 +66,13 @@ class TestSubmitRayJob:
         mock_hook.delete_ray_job.assert_called_once_with("job_12345")
 
     def test_execute_complete_success(self, operator):
-        event = {"status": "success", "message": "Job completed successfully"}
+        event = {"status": JobStatus.SUCCEEDED, "message": "Job completed successfully"}
         operator.job_id = "job_12345"
 
         assert operator.execute_complete(context, event) is None
 
     def test_execute_complete_failure(self, operator):
-        event = {"status": "error", "message": "Job failed"}
+        event = {"status": JobStatus.FAILED, "message": "Job failed"}
         operator.job_id = "job_12345"
 
         with pytest.raises(AirflowException, match="Job failed"):
