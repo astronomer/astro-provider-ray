@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from airflow.exceptions import AirflowException, TaskDeferred
+from ray.job_submission import JobStatus
 
 from ray_provider.operators.ray import SubmitRayJob
 
@@ -13,7 +14,7 @@ num_cpus = 2
 num_gpus = 1
 memory = 1024
 resources = {"CPU": 2}
-timeout = 600
+job_timeout_seconds = 600
 context = MagicMock()
 
 
@@ -27,7 +28,7 @@ def operator():
         num_gpus=num_gpus,
         memory=memory,
         resources=resources,
-        timeout=timeout,
+        job_timeout_seconds=job_timeout_seconds,
         task_id="Testcases",
     )
 
@@ -42,7 +43,7 @@ class TestSubmitRayJob:
         assert operator.num_gpus == num_gpus
         assert operator.memory == memory
         # assert operator.resources == resources
-        assert operator.timeout == timeout
+        assert operator.job_timeout_seconds == job_timeout_seconds
 
     @patch("ray_provider.operators.ray.SubmitRayJob.hook")
     def test_execute(self, mock_hook, operator):
@@ -65,13 +66,13 @@ class TestSubmitRayJob:
         mock_hook.delete_ray_job.assert_called_once_with("job_12345")
 
     def test_execute_complete_success(self, operator):
-        event = {"status": "success", "message": "Job completed successfully"}
+        event = {"status": JobStatus.SUCCEEDED, "message": "Job completed successfully"}
         operator.job_id = "job_12345"
 
         assert operator.execute_complete(context, event) is None
 
     def test_execute_complete_failure(self, operator):
-        event = {"status": "error", "message": "Job failed"}
+        event = {"status": JobStatus.FAILED, "message": "Job failed"}
         operator.job_id = "job_12345"
 
         with pytest.raises(AirflowException, match="Job failed"):
