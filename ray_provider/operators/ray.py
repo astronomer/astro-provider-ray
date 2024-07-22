@@ -73,9 +73,10 @@ class SetupRayCluster(BaseOperator):
         try:
             self.hook.get_custom_object(group=group, version=version, plural=plural, name=name, namespace=namespace)
             self.log.info(f"Updating existing Ray cluster: {name}")
-            self.hook.custom_object_client.patch_namespaced_custom_object(
-                group=group, version=version, namespace=namespace, plural=plural, name=name, body=cluster_spec
-            )
+            if self.update_if_exists:
+                self.hook.custom_object_client.patch_namespaced_custom_object(
+                    group=group, version=version, namespace=namespace, plural=plural, name=name, body=cluster_spec
+                )
         except client.exceptions.ApiException as e:
             if e.status == 404:
                 self.log.info(f"Creating new Ray cluster: {name}")

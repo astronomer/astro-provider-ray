@@ -32,6 +32,7 @@ class TestSetupRayCluster:
             use_gpu=True,
             kuberay_version="1.1.0",
             gpu_device_plugin_yaml="custom_gpu_plugin.yaml",
+            update_if_exists=True,
         )
 
         assert operator.conn_id == "test_conn"
@@ -39,6 +40,7 @@ class TestSetupRayCluster:
         assert operator.use_gpu is True
         assert operator.kuberay_version == "1.1.0"
         assert operator.gpu_device_plugin_yaml == "custom_gpu_plugin.yaml"
+        assert operator.update_if_exists is True
 
     def test_validate_yaml_file_not_exist(self):
         with patch("os.path.isfile", return_value=False):
@@ -69,11 +71,32 @@ class TestSetupRayCluster:
 
     def test_create_or_update_cluster_update(self, mock_hook, operator):
         mock_hook.get_custom_object.return_value = {}
+        operator.update_if_exists = True  # Set this to True to test the update logic
 
         operator.hook = mock_hook
-        operator._create_or_update_cluster("test_group", "v1", "rayclusters", "test-cluster", "default", {})
+        operator._create_or_update_cluster(
+            "test_group", "v1", "rayclusters", "test-cluster", "default", {"spec": "updated"}
+        )
 
-        mock_hook.custom_object_client.patch_namespaced_custom_object.assert_called_once()
+        mock_hook.custom_object_client.patch_namespaced_custom_object.assert_called_once_with(
+            group="test_group",
+            version="v1",
+            namespace="default",
+            plural="rayclusters",
+            name="test-cluster",
+            body={"spec": "updated"},
+        )
+
+    def test_create_or_update_cluster_no_update(self, mock_hook, operator):
+        mock_hook.get_custom_object.return_value = {}
+        operator.update_if_exists = False  # Set this to False to test when update is not allowed
+
+        operator.hook = mock_hook
+        operator._create_or_update_cluster(
+            "test_group", "v1", "rayclusters", "test-cluster", "default", {"spec": "updated"}
+        )
+
+        mock_hook.custom_object_client.patch_namespaced_custom_object.assert_not_called()
 
     def test_setup_gpu_driver(self, mock_hook, operator):
         mock_hook.load_yaml_content.return_value = {"metadata": {"name": "gpu-plugin"}}
