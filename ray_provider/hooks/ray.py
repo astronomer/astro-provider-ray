@@ -47,12 +47,12 @@ class RayHook(KubernetesHook):  # type: ignore
         from wtforms import BooleanField, PasswordField, StringField
 
         return {
-            "address": StringField(lazy_gettext("Ray address path"), widget=BS3TextFieldWidget()),
+            "address": StringField(lazy_gettext("Ray dashboard url"), widget=BS3TextFieldWidget()),
             "create_cluster_if_needed": BooleanField(lazy_gettext("Create cluster if needed")),
-            "cookies": StringField(lazy_gettext("Ray job cookies"), widget=BS3TextFieldWidget()),
-            "metadata": StringField(lazy_gettext("Ray job metadata"), widget=BS3TextFieldWidget()),
-            "headers": StringField(lazy_gettext("Ray job headers"), widget=BS3TextFieldWidget()),
-            "verify": BooleanField(lazy_gettext("Ray job verify")),
+            "cookies": StringField(lazy_gettext("Cookies"), widget=BS3TextFieldWidget()),
+            "metadata": StringField(lazy_gettext("Metadata"), widget=BS3TextFieldWidget()),
+            "headers": StringField(lazy_gettext("Headers"), widget=BS3TextFieldWidget()),
+            "verify": BooleanField(lazy_gettext("Verify")),
             "in_cluster": BooleanField(lazy_gettext("In cluster configuration")),
             "kube_config_path": StringField(lazy_gettext("Kube config path"), widget=BS3TextFieldWidget()),
             "kube_config": PasswordField(lazy_gettext("Kube config (JSON format)"), widget=BS3PasswordFieldWidget()),
@@ -60,12 +60,6 @@ class RayHook(KubernetesHook):  # type: ignore
             "cluster_context": StringField(lazy_gettext("Cluster context"), widget=BS3TextFieldWidget()),
             "disable_verify_ssl": BooleanField(lazy_gettext("Disable SSL")),
             "disable_tcp_keepalive": BooleanField(lazy_gettext("Disable TCP keepalive")),
-            "xcom_sidecar_container_image": StringField(
-                lazy_gettext("XCom sidecar image"), widget=BS3TextFieldWidget()
-            ),
-            "xcom_sidecar_container_resources": StringField(
-                lazy_gettext("XCom sidecar resources (JSON format)"), widget=BS3TextFieldWidget()
-            ),
         }
 
     def __init__(
@@ -74,8 +68,10 @@ class RayHook(KubernetesHook):  # type: ignore
         xcom_dashboard_url: str | None = None,
     ) -> None:
         super().__init__(conn_id=conn_id)
+        self.conn_id = conn_id
+        self.xcom_dashboard_url = xcom_dashboard_url
 
-        self.address = self._get_field("address") or xcom_dashboard_url or os.getenv("RAY_ADDRESS")
+        self.address = self._get_field("address") or self.xcom_dashboard_url or os.getenv("RAY_ADDRESS")
         self.log.info(f"Ray cluster address is: {self.address}")
         self.create_cluster_if_needed = self._get_field("create_cluster_if_needed") or False
         self.cookies = self._get_field("cookies")
@@ -86,8 +82,13 @@ class RayHook(KubernetesHook):  # type: ignore
 
         self.namespace = self.get_namespace()
         self.kubeconfig: str | None = None
+        in_cluster: bool | None = self._get_field("in_cluster")
+        self.client_configuration = None
+        self.config_file = None
+        self.disable_verify_ssl = None
+        self.disable_tcp_keepalive = None
+        self._is_in_cluster: bool | None = None
 
-        in_cluster = self._get_field("in_cluster")
         cluster_context = self._get_field("cluster_context")
         kubeconfig_path = self._get_field("kube_config_path")
         kubeconfig_content = self._get_field("kube_config")
@@ -221,7 +222,6 @@ class RayHook(KubernetesHook):  # type: ignore
         """
         client = self.ray_client
         logs = client.get_job_logs(job_id=job_id)
-        self.log.info(f"Logs for job {job_id}: {logs}")
         return str(logs)
 
     async def get_ray_tail_logs(self, job_id: str) -> AsyncIterator[str]:
@@ -321,10 +321,21 @@ class RayHook(KubernetesHook):  # type: ignore
 
                 if lb_details:
                     hostname = lb_details["ip_or_hostname"]
-                    if all(self._is_port_open(hostname, port["port"]) for port in lb_details["ports"]):
-                        return lb_details
+                    all_ports_open = True
+                    for port in lb_details["ports"]:
+                        if not self._is_port_open(hostname, port["port"]):
+                            self.log.info(f"Port {port['port']} is not open yet.")
+                            all_ports_open = False
+                            break
 
-                    self.log.info("Not all ports are open. Waiting...")
+                    if all_ports_open:
+                        self.log.info("All ports are open. LoadBalancer is ready.")
+                        return lb_details
+                    else:
+                        self.log.info("Not all ports are open. Waiting...")
+                else:
+                    self.log.info("LoadBalancer details not available yet.")
+
             except AirflowException:
                 self.log.info("LoadBalancer service is not available yet...")
 

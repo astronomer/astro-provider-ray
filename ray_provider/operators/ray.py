@@ -35,6 +35,7 @@ class SetupRayCluster(BaseOperator):
         use_gpu: bool = False,
         kuberay_version: str = "1.0.0",
         gpu_device_plugin_yaml: str = "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
+        update_if_exists: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -43,6 +44,7 @@ class SetupRayCluster(BaseOperator):
         self.use_gpu = use_gpu
         self.kuberay_version = kuberay_version
         self.gpu_device_plugin_yaml = gpu_device_plugin_yaml
+        self.update_if_exists = update_if_exists
 
         self._validate_yaml_file(ray_cluster_yaml)
 
@@ -70,10 +72,11 @@ class SetupRayCluster(BaseOperator):
         """Create or update the Ray cluster based on the cluster specification."""
         try:
             self.hook.get_custom_object(group=group, version=version, plural=plural, name=name, namespace=namespace)
-            self.log.info(f"Updating existing Ray cluster: {name}")
-            self.hook.patch_custom_object(
-                group=group, version=version, namespace=namespace, plural=plural, name=name, body=cluster_spec
-            )
+            if self.update_if_exists:
+                self.log.info(f"Updating existing Ray cluster: {name}")
+                self.hook.custom_object_client.patch_namespaced_custom_object(
+                    group=group, version=version, namespace=namespace, plural=plural, name=name, body=cluster_spec
+                )
         except client.exceptions.ApiException as e:
             if e.status == 404:
                 self.log.info(f"Creating new Ray cluster: {name}")
@@ -110,8 +113,11 @@ class SetupRayCluster(BaseOperator):
     def execute(self, context: Context) -> None:
         """Execute the operator to set up the Ray cluster."""
         try:
+            self.log.info("::group::Add KubeRay operator")
             self.hook.install_kuberay_operator(version=self.kuberay_version)
+            self.log.info("::endgroup::")
 
+            self.log.info("::group::Create Ray Cluster")
             self.log.info("Loading yaml content for Ray cluster CRD...")
             cluster_spec = self.hook.load_yaml_content(self.ray_cluster_yaml)
 
@@ -123,11 +129,14 @@ class SetupRayCluster(BaseOperator):
             group, version = api_version.split("/") if "/" in api_version else ("", api_version)
 
             self._create_or_update_cluster(group, version, plural, name, namespace, cluster_spec)
+            self.log.info("::endgroup::")
 
             if self.use_gpu:
                 self._setup_gpu_driver()
 
+            self.log.info("::group::Setup Load Balancer service")
             self._setup_load_balancer(name, namespace, context)
+            self.log.info("::endgroup::")
 
         except Exception as e:
             self.log.error(f"Error setting up Ray cluster: {e}")
@@ -210,7 +219,9 @@ class DeleteRayCluster(BaseOperator):
         try:
             if self.use_gpu:
                 self._delete_gpu_daemonset()
+            self.log.info("::group:: Delete Ray Cluster")
             self._delete_ray_cluster()
+            self.log.info("::endgroup::")
             self.hook.uninstall_kuberay_operator()
         except Exception as e:
             self.log.error(f"Error deleting Ray cluster: {e}")
@@ -231,7 +242,7 @@ class SubmitRayJob(BaseOperator):
     :param num_gpus: Number of GPUs required for the job. Defaults to 0.
     :param memory: Amount of memory required for the job. Defaults to 0.
     :param resources: Additional resources required for the job. Defaults to None.
-    :param timeout: Maximum time to wait for job completion in seconds. Defaults to 600 seconds.
+    :param job_timeout_seconds: Maximum time to wait for job completion in seconds. Defaults to 600 seconds.
     :param poll_interval: Interval between job status checks in seconds. Defaults to 60 seconds.
     :param xcom_task_key: XCom key to retrieve dashboard URL. Defaults to None.
     """
@@ -248,7 +259,9 @@ class SubmitRayJob(BaseOperator):
         num_gpus: int | float = 0,
         memory: int | float = 0,
         resources: dict[str, Any] | None = None,
-        timeout: int = 600,
+        fetch_logs: bool = True,
+        wait_for_completion: bool = True,
+        job_timeout_seconds: int = 600,
         poll_interval: int = 60,
         xcom_task_key: str | None = None,
         **kwargs: Any,
@@ -261,7 +274,9 @@ class SubmitRayJob(BaseOperator):
         self.num_gpus = num_gpus
         self.memory = memory
         self.ray_resources = resources
-        self.timeout = timeout
+        self.fetch_logs = fetch_logs
+        self.wait_for_completion = wait_for_completion
+        self.job_timeout_seconds = job_timeout_seconds
         self.poll_interval = poll_interval
         self.xcom_task_key = xcom_task_key
         self.dashboard_url: str | None = None
@@ -303,29 +318,31 @@ class SubmitRayJob(BaseOperator):
         )
         self.log.info(f"Ray job submitted with id: {self.job_id}")
 
-        current_status = self.hook.get_ray_job_status(self.job_id)
-        self.log.info(f"Current job status for {self.job_id} is: {current_status}")
+        if self.wait_for_completion:
+            current_status = self.hook.get_ray_job_status(self.job_id)
+            self.log.info(f"Current job status for {self.job_id} is: {current_status}")
 
-        if current_status not in self.terminal_state:
-            self.log.info("Deferring the polling to RayJobTrigger...")
-            self.defer(
-                timeout=timedelta(seconds=self.timeout),
-                trigger=RayJobTrigger(
-                    job_id=self.job_id,
-                    conn_id=self.conn_id,
-                    xcom_dashboard_url=self.dashboard_url,
-                    poll_interval=self.poll_interval,
-                ),
-                method_name="execute_complete",
-            )
-        elif current_status == JobStatus.SUCCEEDED:
-            self.log.info("Job %s completed successfully", self.job_id)
-        elif current_status == JobStatus.FAILED:
-            raise AirflowException(f"Job failed:\n{self.job_id}")
-        elif current_status == JobStatus.STOPPED:
-            raise AirflowException(f"Job was cancelled:\n{self.job_id}")
-        else:
-            raise AirflowException(f"Encountered unexpected state `{current_status}` for job_id `{self.job_id}`")
+            if current_status not in self.terminal_state:
+                self.log.info("Deferring the polling to RayJobTrigger...")
+                self.defer(
+                    trigger=RayJobTrigger(
+                        job_id=self.job_id,
+                        conn_id=self.conn_id,
+                        xcom_dashboard_url=self.dashboard_url,
+                        poll_interval=self.poll_interval,
+                        fetch_logs=self.fetch_logs,
+                    ),
+                    method_name="execute_complete",
+                    timeout=timedelta(seconds=self.job_timeout_seconds),
+                )
+            elif current_status == JobStatus.SUCCEEDED:
+                self.log.info("Job %s completed successfully", self.job_id)
+            elif current_status == JobStatus.FAILED:
+                raise AirflowException(f"Job failed:\n{self.job_id}")
+            elif current_status == JobStatus.STOPPED:
+                raise AirflowException(f"Job was cancelled:\n{self.job_id}")
+            else:
+                raise AirflowException(f"Encountered unexpected state `{current_status}` for job_id `{self.job_id}`")
 
         return self.job_id
 
@@ -337,10 +354,10 @@ class SubmitRayJob(BaseOperator):
         :param event: The event containing the job execution result.
         :raises AirflowException: If the job execution fails or is cancelled.
         """
-        if event["status"] in ["error", "cancelled"]:
+        if event["status"] in [JobStatus.STOPPED, JobStatus.FAILED]:
             self.log.info(f"Ray job {self.job_id} execution not completed...")
             raise AirflowException(event["message"])
-        elif event["status"] == "success":
+        elif event["status"] == JobStatus.SUCCEEDED:
             self.log.info(f"Ray job {self.job_id} execution succeeded ...")
         else:
             raise AirflowException(f"Unexpected event status: {event['status']}")
