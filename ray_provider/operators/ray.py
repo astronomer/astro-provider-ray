@@ -72,8 +72,8 @@ class SetupRayCluster(BaseOperator):
         """Create or update the Ray cluster based on the cluster specification."""
         try:
             self.hook.get_custom_object(group=group, version=version, plural=plural, name=name, namespace=namespace)
-            self.log.info(f"Updating existing Ray cluster: {name}")
             if self.update_if_exists:
+                self.log.info(f"Updating existing Ray cluster: {name}")
                 self.hook.custom_object_client.patch_namespaced_custom_object(
                     group=group, version=version, namespace=namespace, plural=plural, name=name, body=cluster_spec
                 )
