@@ -95,6 +95,6 @@ jobs:
           export KUBECONFIG=./kubeconfig.yaml
       - name: Run Python code to execute DAGs
         run: |
-          python test_example_dags.py
+          python tests/test_dag_example.py
         env:
           KUBECONFIG: ./kubeconfig.yaml  # Make sure the script can access the kubeconfig
