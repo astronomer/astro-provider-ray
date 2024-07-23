@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from airflow import DAG
 
@@ -11,7 +12,9 @@ default_args = {
     "retry_delay": timedelta(minutes=0),
 }
 
-RAY_SPEC = "/usr/local/airflow/example_dags/scripts/ray.yaml"
+
+RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
+FOLDER_PATH = Path(__file__).parent / "ray_scripts"
 
 dag = DAG(
     "Setup_Teardown",
@@ -33,7 +36,7 @@ submit_ray_job = SubmitRayJob(
     task_id="SubmitRayJob",
     conn_id="ray_conn",
     entrypoint="python script.py",
-    runtime_env={"working_dir": "/usr/local/airflow/example_dags/ray_scripts"},
+    runtime_env={"working_dir": FOLDER_PATH},
     num_cpus=1,
     num_gpus=0,
     memory=0,
