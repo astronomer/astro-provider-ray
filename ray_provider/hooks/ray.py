@@ -79,7 +79,7 @@ class RayHook(KubernetesHook):  # type: ignore
         self.verify = self._get_field("verify") or False
         self.ray_client_instance = None
 
-        self.namespace = self.get_namespace()
+        self.namespace = self.get_namespace() or self.DEFAULT_NAMESPACE
         self.kubeconfig: str | None = None
         self.in_cluster: bool | None = None
         self.client_configuration = None
