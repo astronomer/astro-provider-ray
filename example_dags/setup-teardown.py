@@ -52,7 +52,7 @@ submit_ray_job = SubmitRayJob(
 delete_cluster = DeleteRayCluster(
     task_id="DeleteRayCluster",
     conn_id="ray_conn",
-    ray_cluster_yaml=RAY_SPEC,
+    ray_cluster_yaml=str(RAY_SPEC),
     use_gpu=False,
     dag=dag,
 )
