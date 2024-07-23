@@ -20,13 +20,13 @@ dag = DAG(
     "Setup_Teardown",
     default_args=default_args,
     description="Setup Ray cluster and submit a job",
-    schedule_interval=None,
+    schedule=None,
 )
 
 setup_cluster = SetupRayCluster(
     task_id="SetupRayCluster",
     conn_id="ray_conn",
-    ray_cluster_yaml=RAY_SPEC,
+    ray_cluster_yaml=str(RAY_SPEC),
     use_gpu=False,
     update_if_exists=False,
     dag=dag,
@@ -36,7 +36,7 @@ submit_ray_job = SubmitRayJob(
     task_id="SubmitRayJob",
     conn_id="ray_conn",
     entrypoint="python script.py",
-    runtime_env={"working_dir": FOLDER_PATH},
+    runtime_env={"working_dir": str(FOLDER_PATH)},
     num_cpus=1,
     num_gpus=0,
     memory=0,
