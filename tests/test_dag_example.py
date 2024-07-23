@@ -66,5 +66,4 @@ def test_dag_runs(setup_airflow_db, dag_id, dag, fileloc):
     try:
         dag.test()
     except Exception as e:
-        print(f"Error running DAG {dag_id}: {e}")
-        raise e
+        pytest.fail(f"Error running DAG {dag_id}: {e}")
