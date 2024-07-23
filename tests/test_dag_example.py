@@ -40,9 +40,11 @@ def setup_airflow_db():
         conn = Connection(
             conn_id=conn_id,
             conn_type="ray",
-            kube_config_path=os.environ.get("KUBECONFIG"),
-            namespace="ray",
-            cluster_context=None,
+            extra={
+                "kube_config_path": os.environ.get("KUBECONFIG"),
+                "namespace": "ray",
+                "cluster_context": None,  # Set to None as we don't know how to get cluster context for a kind cluster
+            },
         )
         session.add(conn)
         session.commit()
