@@ -128,28 +128,31 @@ class RayHook(KubernetesHook):  # type: ignore
             self.log.debug("Loading kubeconfig from in_cluster")
             self._is_in_cluster = True
             self._get_in_cluster_kubeconfig()
+            config.load_kube_config(config_file=self.kubeconfig, context=cluster_context)
         else:
             self.log.debug("Using default kubeconfig")
             config.load_kube_config(context=cluster_context)
             self._is_in_cluster = False
 
-    def _get_in_cluster_kubeconfig(self) -> None:
+    def get_in_cluster_kubeconfig(self) -> None:
         try:
+            # Load in-cluster configuration
             config.load_incluster_config()
 
+            # Get the default configuration
             kube_config = client.Configuration.get_default_copy()
 
+            # Sanitize and serialize the configuration
             api_client = client.ApiClient(kube_config)
+            serialized_config = api_client.sanitize_for_serialization(kube_config)
 
-            kubeconfig_dict = api_client.configuration.to_dict()
-
-            kubeconfig_yaml = config.kube_config.KubeConfigMerger(kubeconfig_dict).dump()
-
-            with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
-                temp_file.write(kubeconfig_yaml)
+            # Write to a temporary file
+            with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yaml") as temp_file:
+                yaml.safe_dump(serialized_config, temp_file)
                 self.kubeconfig = temp_file.name
 
             self.log.info(f"In-cluster kubeconfig has been written to {self.kubeconfig}")
+
         except config.config_exception.ConfigException:
             self.log.error("Unable to load in-cluster configuration. Are you running this inside a Kubernetes pod?")
             raise AirflowException("Failed to load in-cluster kubeconfig")
