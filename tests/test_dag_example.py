@@ -7,7 +7,7 @@ from airflow.utils.db import create_default_connections
 from airflow.utils.session import create_session
 
 # Correctly construct the example DAGs directory path
-EXAMPLE_DAGS_DIR = Path(__file__).parent.parent.parent / "example_dags"
+EXAMPLE_DAGS_DIR = Path(__file__).parent.parent / "example_dags"
 print(f"EXAMPLE_DAGS_DIR: {EXAMPLE_DAGS_DIR}")
 
 
