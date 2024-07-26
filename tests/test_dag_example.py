@@ -57,14 +57,14 @@ def setup_airflow_db():
         session.add(conn)
         session.commit()
 
-    dags = get_dags(EXAMPLE_DAGS_DIR)
-    print(f"Discovered DAGs: {dags}")
-    return dags
+
+dags = get_dags(EXAMPLE_DAGS_DIR)
+print(f"Discovered DAGs: {dags}")
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("dag_id,dag,fileloc", setup_airflow_db(), ids=lambda x: x[2])
-def test_dag_runs(dag_id, dag, fileloc):
+@pytest.mark.parametrize("dag_id,dag,fileloc", dags, ids=[x[2] for x in dags])
+def test_dag_runs(setup_airflow_db, dag_id, dag, fileloc):
     print(f"Testing DAG: {dag_id}, located at: {fileloc}")
     assert dag is not None, f"DAG {dag_id} not found!"
 
