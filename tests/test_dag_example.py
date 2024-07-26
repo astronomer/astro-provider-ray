@@ -32,14 +32,6 @@ def setup_airflow_db():
     # Explicitly create the tables if necessary
     create_default_connections()
 
-    kubeconfig_path = os.environ.get("KUBECONFIG")
-    if not kubeconfig_path:
-        raise ValueError("KUBECONFIG environment variable is not set.")
-
-    print(f"KUBECONFIG is set to: {kubeconfig_path}")
-    if not os.path.exists(kubeconfig_path):
-        raise FileNotFoundError(f"KUBECONFIG file not found at {kubeconfig_path}")
-
     with create_session() as session:
         conn_exists = session.query(Connection).filter(Connection.conn_id == conn_id).first()
         if conn_exists:
@@ -49,7 +41,7 @@ def setup_airflow_db():
             conn_id=conn_id,
             conn_type="ray",
             extra={
-                "kube_config_path": kubeconfig_path,
+                "kube_config_path": os.environ.get("KUBECONFIG"),
                 "namespace": "ray",
                 "cluster_context": None,  # Set to None as we don't know how to get cluster context for a kind cluster
             },
