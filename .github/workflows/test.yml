@@ -102,9 +102,13 @@ jobs:
         run: |
           kind get kubeconfig --name chart-testing > kubeconfig.yaml
       - name: Run Python code to execute DAGs
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig.yaml
         run: |
-          export KUBECONFIG=$(pwd)/kubeconfig.yaml
-          pytest tests/test_dag_example.py
+          echo "KUBECONFIG is set to: $KUBECONFIG"
+          ls -l $KUBECONFIG
+          cat $KUBECONFIG
+          pytest tests/test_dag_example.py -v
       - name: Upload coverage to Github
         uses: actions/upload-artifact@v4
         with:
