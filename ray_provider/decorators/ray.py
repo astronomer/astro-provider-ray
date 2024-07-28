@@ -35,12 +35,19 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
     def __init__(self, config: dict[str, Any], **kwargs: Any) -> None:
         self.conn_id: str = config.get("conn_id", "")
+        self.is_decorated_function = False if "entrypoint" in config else True
         self.entrypoint: str = config.get("entrypoint", "python script.py")
         self.runtime_env: dict[str, Any] = config.get("runtime_env", {})
 
         self.num_cpus: int | float = config.get("num_cpus", 1)
         self.num_gpus: int | float = config.get("num_gpus", 0)
-        self.memory: int | float = config.get("memory", 0)
+        self.memory: int | float = config.get("memory", None)
+        self.ray_resources: dict[str, Any] | None = config.get("resources", None)
+        self.fetch_logs: bool = config.get("fetch_logs", True)
+        self.wait_for_completion: bool = config.get("wait_for_completion", True)
+        self.job_timeout_seconds: int = config.get("job_timeout_seconds", 600)
+        self.poll_interval: int = config.get("poll_interval", 60)
+        self.xcom_task_key: str | None = config.get("xcom_task_key", None)
         self.config = config
 
         if not isinstance(self.num_cpus, (int, float)):
@@ -55,6 +62,12 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
             num_cpus=self.num_cpus,
             num_gpus=self.num_gpus,
             memory=self.memory,
+            resources=self.ray_resources,
+            fetch_logs=self.fetch_logs,
+            wait_for_completion=self.wait_for_completion,
+            job_timeout_seconds=self.job_timeout_seconds,
+            poll_interval=self.poll_interval,
+            xcom_task_key=self.xcom_task_key,
             **kwargs,
         )
 
@@ -66,19 +79,25 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         :return: The result of the Ray job execution.
         :raises AirflowException: If job submission fails.
         """
-        tmp_dir = mkdtemp(prefix="ray_")
+        tmp_dir = None
         try:
-            py_source = self.get_python_source().splitlines()  # type: ignore
-            function_body = textwrap.dedent("\n".join(py_source[1:]))
+            if self.is_decorated_function:
+                self.log.info(
+                    f"Entrypoint is not provided, is_decorated_function is set to {self.is_decorated_function}"
+                )
+                tmp_dir = mkdtemp(prefix="ray_")
+                py_source = self.get_python_source().splitlines()  # type: ignore
+                function_body = textwrap.dedent("\n".join(py_source))
 
-            script_filename = os.path.join(tmp_dir, "script.py")
-            with open(script_filename, "w") as file:
-                all_args_str = self._build_args_str()
-                script_body = f"{function_body}\n{self._extract_function_name()}({all_args_str})"
-                file.write(script_body)
+                script_filename = os.path.join(tmp_dir, "script.py")
+                with open(script_filename, "w") as file:
+                    all_args_str = self._build_args_str()
+                    script_body = f"{function_body}\n{self._extract_function_name()}({all_args_str})"
+                    file.write(script_body)
 
-            self.entrypoint = "python script.py"
-            self.runtime_env["working_dir"] = tmp_dir
+                self.entrypoint = "python script.py"
+                self.runtime_env["working_dir"] = tmp_dir
+
             self.log.info("Running ray job...")
 
             result = super().execute(context)
@@ -87,7 +106,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
             self.log.error(f"Failed during execution with error: {e}")
             raise AirflowException("Job submission failed") from e
         finally:
-            if os.path.exists(tmp_dir):
+            if tmp_dir and os.path.exists(tmp_dir):
                 shutil.rmtree(tmp_dir)
 
     def _build_args_str(self) -> str:
@@ -109,22 +128,24 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         return self.python_callable.__name__
 
 
-def ray_task(
-    python_callable: Callable[..., Any] | None = None,
-    multiple_outputs: bool | None = None,
-    **kwargs: Any,
-) -> TaskDecorator:
-    """
-    Decorator to define a task that submits a Ray job.
+class task:
+    @staticmethod
+    def ray(
+        python_callable: Callable[..., Any] | None = None,
+        multiple_outputs: bool | None = None,
+        **kwargs: Any,
+    ) -> TaskDecorator:
+        """
+        Decorator to define a task that submits a Ray job.
 
-    :param python_callable: The callable function to decorate.
-    :param multiple_outputs: If True, will return multiple outputs.
-    :param kwargs: Additional keyword arguments.
-    :return: The decorated task.
-    """
-    return task_decorator_factory(
-        python_callable=python_callable,
-        multiple_outputs=multiple_outputs,
-        decorated_operator_class=_RayDecoratedOperator,
-        **kwargs,
-    )
+        :param python_callable: The callable function to decorate.
+        :param multiple_outputs: If True, will return multiple outputs.
+        :param kwargs: Additional keyword arguments.
+        :return: The decorated task.
+        """
+        return task_decorator_factory(
+            python_callable=python_callable,
+            multiple_outputs=multiple_outputs,
+            decorated_operator_class=_RayDecoratedOperator,
+            **kwargs,
+        )
