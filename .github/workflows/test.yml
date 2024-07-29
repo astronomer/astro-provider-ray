@@ -100,7 +100,8 @@ jobs:
         uses: container-tools/kind-action@v1
         with:
           cluster_name : integration-test
-          cpu: 10
+          cpu: 16
+          memory: 32
 
       - name: Get kubeconfig and run integration tests
         run: |
