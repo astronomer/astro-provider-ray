@@ -29,24 +29,20 @@ Components
 
 Hooks
 ^^^^^
-
 - **RayHook**: Sets up methods needed to run operators and decorators, working with the 'Ray' connection type to manage Ray clusters and submit jobs.
 
 Decorators
 ^^^^^^^^^^
-
 - **_RayDecoratedOperator**: Simplifies integration by decorating task functions to work seamlessly with Ray.
 
 Operators
 ^^^^^^^^^
-
 - **SetupRayCluster**: (Placeholder for cluster setup details)
 - **DeleteRayCluster**: (Placeholder for cluster deletion details)
 - **SubmitRayJob**: Submits jobs to a Ray cluster using a specified host name.
 
 Triggers
 ^^^^^^^^
-
 - **RayJobTrigger**: Monitors asynchronous job execution submitted via ``SubmitRayJob`` or using the ``@task.ray()`` decorator.
 
 Example Usage

@@ -261,11 +261,9 @@ def ray_taskflow_dag():
 ray_example_dag = ray_taskflow_dag()
 ```
 
-
 Remember to adjust file paths, connection IDs, and other specifics according to your setup.
 
 ## Contact the devs
-
 
 If you have any questions, issues, or feedback regarding the astro-provider-ray package, please don't hesitate to reach out to the development team. You can contact us through the following channels:
 
@@ -273,8 +271,6 @@ If you have any questions, issues, or feedback regarding the astro-provider-ray 
 - **Slack Channel**: Join Apache Airflow's [Slack](https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ). Visit `#airflow-ray` for discussions and help.
 
 We appreciate your input and are committed to improving this package to better serve the community.
-
-
 
 ## Changelog
 _________
