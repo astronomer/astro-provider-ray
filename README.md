@@ -2,8 +2,6 @@
 
 This repository provides tools for integrating [Apache Airflow®](https://airflow.apache.org/) with Ray, enabling the orchestration of Ray jobs within Airflow workflows. It includes a decorator, two operators, and one trigger designed to efficiently manage and monitor Ray jobs and services.
 
-
-
 ## Table of Contents
 
 - [Components](#components)
@@ -32,15 +30,6 @@ This repository provides tools for integrating [Apache Airflow®](https://airflo
 ### Triggers
 
 - **RayJobTrigger**: Monitors asynchronous job execution submitted via `SubmitRayJob` or using the `@task.ray()` decorator.
-
-## Compatibility
-
-These operators have been tested with the below versions. They will most likely be compatible with future versions but have not yet been tested.
-
-| Python Version | Airflow Version | Ray Version |
-|----------------|-----------------|-------------|
-| 3.11           | 2.9.0           | 2.23.0      |
-
 
 ## Example Usage
 
