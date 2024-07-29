@@ -98,15 +98,19 @@ jobs:
           version: v3.14.4
       - name: Create k8s Kind Cluster
         uses: helm/kind-action@v1.5.0
+        with:
+          cluster_name: integration-testing
 
       - name: Get kubeconfig and run integration tests
         run: |
-          kind get kubeconfig --name chart-testing > kubeconfig.yaml
+          kind get kubeconfig --name integration-testing > kubeconfig.yaml
           export KUBECONFIG=$(pwd)/kubeconfig.yaml
           echo "KUBECONFIG is set to: $KUBECONFIG"
           ls -l $KUBECONFIG
           cat $KUBECONFIG
-          pytest tests -v -m integration
+
+          # Pass the KUBECONFIG as an environment variable to pytest
+          KUBECONFIG=$KUBECONFIG hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:pytest tests -v -m integration
       - name: Upload coverage to Github
         uses: actions/upload-artifact@v4
         with:
