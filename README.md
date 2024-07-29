@@ -1,6 +1,6 @@
 # astro-provider-ray
 
-This repository provides a set of tools for integrating Ray with Apache Airflow, enabling the orchestration of Ray jobs within Airflow workflows. It includes a decorator, two operators, and one trigger specifically designed for managing and monitoring Ray jobs and services.
+This repository provides a set of tools for integrating [Apache Airflow®](https://airflow.apache.org/) with Ray, enabling the orchestration of Ray jobs within Airflow workflows. It includes a decorator, two operators, and one trigger designed to efficiently manage and monitor Ray jobs and services.
 
 ## Table of Contents
 - [Components](#components)
@@ -11,14 +11,15 @@ This repository provides a set of tools for integrating Ray with Apache Airflow,
 - [Compatibility](#compatibility)
 - [Example Usage](#example-usage)
   - [1. Setting up the connection](#1-setting-up-the-connection)
+    - [For SubmitRayJob operator (using an existing Ray cluster)](#for-submitrayjob-operator-using-an-existing-ray-cluster)
+    - [For SetupRayCluster and DeleteRayCluster operators](#for-setupraycluster-and-deleteraycluster-operators)
   - [2. Setting up the Ray cluster spec](#2-setting-up-the-ray-cluster-spec)
-  - [3. Usage Scenarios](#3-usage-scenarios)
+  - [3. Code Samples](#3-code-samples)
     - [Scenario 1: Setting up a Ray cluster on an existing Kubernetes cluster](#scenario-1-setting-up-a-ray-cluster-on-an-existing-kubernetes-cluster)
     - [Scenario 2: Using an existing Ray cluster](#scenario-2-using-an-existing-ray-cluster)
 - [Contact the devs](#contact-the-devs)
 - [Changelog](#changelog)
 - [Contributing Guide](#contributing-guide)
-
 
 ### Components
 
@@ -52,16 +53,40 @@ Before using the astro-provider-ray, you need to set up a few things:
 
 #### 1. Setting up the connection
 
-To use this provider, you need to set up a connection in Airflow:
+To use this provider, you need to set up a connection in Airflow. The fields you need to fill depend on which operators you plan to use:
 
 1. Go to the Airflow UI and navigate to Admin -> Connections.
 2. Click on "Create" to add a new connection.
 3. Set the Connection Type to "Ray".
-4. Fill in the following fields:
-   - Connection ID: A unique identifier for this connection (e.g., "ray_conn")
-   - Host: The hostname or IP address of your Ray cluster's head node
-   - Port: The port number for the Ray cluster (default is usually 10001)
-   - Extra: You can add any additional configuration here in JSON format
+
+##### For SubmitRayJob operator (using an existing Ray cluster):
+
+If you already have a Ray cluster and want to submit jobs to it, fill in these fields:
+
+- Connection ID: A unique identifier for this connection (e.g., "ray_conn")
+- Ray dashboard url : The URL of the Ray dashboard
+- Create cluster if needed: Leave unchecked
+- Cookies: Any cookies required for authentication (optional)
+- Metadata: Any additional metadata (optional)
+- Headers: Any additional headers (optional)
+- Verify: Check this box to verify SSL certificates
+
+##### For SetupRayCluster and DeleteRayCluster operators:
+
+If you want to set up or delete Ray clusters on Kubernetes, you need to provide Kubernetes configuration. Fill in these fields:
+
+- Connection ID: A unique identifier for this connection (e.g., "ray_k8s_conn")
+- Kube config path: Path to your kubeconfig file
+  OR
+- Kube config: Paste your kubeconfig content in JSON format
+- Namespace: The Kubernetes namespace to use (optional, defaults to "default")
+- Cluster context: The Kubernetes cluster context to use (optional)
+- Disable SSL: Check this box to disable SSL verification (if needed)
+- Disable TCP keepalive: Check this box to disable TCP keepalive (if needed)
+
+**Note:** The `kube_config_path` and `kube_config` options are mutually exclusive. You can only use one at a time.
+
+After setting up the appropriate connection, you can use it in your DAGs by referencing the Connection ID you specified. Make sure to use the correct connection ID based on the operators you're using in your DAG.
 
 #### 2. Setting up the Ray cluster spec
 
@@ -134,7 +159,9 @@ spec:
 ```
 Save this file in a location accessible to your Airflow installation, and reference it in your DAG code.
 
-#### 3. Usage Scenarios
+**Note:** `spec.headGroupSpec.serviceType` must be a 'LoadBalancer' to spin a service that exposes your dashboard
+
+#### 3. Code Samples
 
 There are two main scenarios for using this provider:
 
