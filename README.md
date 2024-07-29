@@ -10,6 +10,11 @@ This repository provides a set of tools for integrating Ray with Apache Airflow,
   - [Triggers](#triggers)
 - [Compatibility](#compatibility)
 - [Example Usage](#example-usage)
+  - [1. Setting up the connection](#1-setting-up-the-connection)
+  - [2. Setting up the Ray cluster spec](#2-setting-up-the-ray-cluster-spec)
+  - [3. Usage Scenarios](#3-usage-scenarios)
+    - [Scenario 1: Setting up a Ray cluster on an existing Kubernetes cluster](#scenario-1-setting-up-a-ray-cluster-on-an-existing-kubernetes-cluster)
+    - [Scenario 2: Using an existing Ray cluster](#scenario-2-using-an-existing-ray-cluster)
 - [Contact the devs](#contact-the-devs)
 - [Changelog](#changelog)
 - [Contributing Guide](#contributing-guide)
@@ -42,6 +47,100 @@ These operators have been tested with the below versions. They will most likely 
 
 
 ### Example Usage
+
+Before using the astro-provider-ray, you need to set up a few things:
+
+#### 1. Setting up the connection
+
+To use this provider, you need to set up a connection in Airflow:
+
+1. Go to the Airflow UI and navigate to Admin -> Connections.
+2. Click on "Create" to add a new connection.
+3. Set the Connection Type to "Ray".
+4. Fill in the following fields:
+   - Connection ID: A unique identifier for this connection (e.g., "ray_conn")
+   - Host: The hostname or IP address of your Ray cluster's head node
+   - Port: The port number for the Ray cluster (default is usually 10001)
+   - Extra: You can add any additional configuration here in JSON format
+
+#### 2. Setting up the Ray cluster spec
+
+For the `SetupRayCluster` and `DeleteRayCluster` operators, you need to provide a Ray cluster specification. This is typically a YAML file that defines the configuration of your Ray cluster. Here's a basic example:
+
+```yaml
+# ray.yaml
+apiVersion: ray.io/v1
+kind: RayCluster
+metadata:
+  name: raycluster-complete
+spec:
+  rayVersion: "2.10.0"
+  enableInTreeAutoscaling: true
+  headGroupSpec:
+    serviceType: LoadBalancer
+    rayStartParams:
+      dashboard-host: "0.0.0.0"
+      block: "true"
+    template:
+      metadata:
+        labels:
+          ray-node-type: head
+      spec:
+        containers:
+        - name: ray-head
+          image: rayproject/ray-ml:latest
+          resources:
+            limits:
+              cpu: 4
+              memory: 8Gi
+            requests:
+              cpu: 4
+              memory: 8Gi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","ray stop"]
+          ports:
+          - containerPort: 6379
+            name: gcs
+          - containerPort: 8265
+            name: dashboard
+          - containerPort: 10001
+            name: client
+          - containerPort: 8000
+            name: serve
+          - containerPort: 8080
+            name: metrics
+  workerGroupSpecs:
+  - groupName: small-group
+    replicas: 2
+    minReplicas: 2
+    maxReplicas: 5
+    rayStartParams:
+      block: "true"
+    template:
+      metadata:
+      spec:
+        containers:
+        - name: machine-learning
+          image: rayproject/ray-ml:latest
+          resources:
+            limits:
+              cpu: 2
+              memory: 4Gi
+            requests:
+              cpu: 2
+              memory: 4Gi
+```
+Save this file in a location accessible to your Airflow installation, and reference it in your DAG code.
+
+#### 3. Usage Scenarios
+
+There are two main scenarios for using this provider:
+
+##### Scenario 1: Setting up a Ray cluster on an existing Kubernetes cluster
+
+If you have an existing Kubernetes cluster and want to install a Ray cluster on it, then run a Ray job, you can use the `SetupRayCluster`, `SubmitRayJob`, and `DeleteRayCluster` operators. Here's an example DAG (`setup_teardown.py`):
 
 The provided `setup_teardown.py` script demonstrates how to configure and use the `SetupRayCluster`, `DeleteRayCluster` and the `SubmitRayJob` operators within an Airflow DAG:
 
@@ -106,7 +205,9 @@ setup_cluster.as_setup() >> submit_ray_job >> delete_cluster.as_teardown()
 setup_cluster >> delete_cluster
 ```
 
-The provided `ray_taskflow_example.py` example shows how we can interact with a ray cluster using the task flow api
+##### Scenario 2: Using an existing Ray cluster
+
+If you already have a Ray cluster set up, you can use the Ray Taskflow API to submit jobs directly. Here's an example DAG (`ray_taskflow_example.py`):
 
 ```python
 from airflow.decorators import dag, task as airflow_task
@@ -114,7 +215,7 @@ from datetime import datetime, timedelta
 from ray_provider.decorators.ray import task
 
 RAY_TASK_CONFIG = {
-    "conn_id": "ray_job",
+    "conn_id": "ray_conn",
     "runtime_env": {
         "working_dir": "/usr/local/airflow/dags/ray_scripts",
         "pip": ["numpy"],
@@ -160,7 +261,7 @@ def ray_taskflow_dag():
         futures = [square.remote(x) for x in data]
         results = ray.get(futures)
         mean = np.mean(results)
-        print(f"Mean of this population is {mean}")
+        print(f"Mean of squared values: {mean}")
         return mean
 
     data = generate_data()
@@ -169,8 +270,11 @@ def ray_taskflow_dag():
 
 ray_example_dag = ray_taskflow_dag()
 ```
+In this example, the `@task.ray` decorator is used to define a task that will be executed on the Ray cluster.
+Remember to adjust file paths, connection IDs, and other specifics according to your setup.
 
 ### Contact the devs
+_________
 
 If you have any questions, issues, or feedback regarding the astro-provider-ray package, please don't hesitate to reach out to the development team. You can contact us through the following channels:
 
