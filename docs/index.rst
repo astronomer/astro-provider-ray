@@ -296,7 +296,7 @@ Contact the devs
 If you have any questions, issues, or feedback regarding the astro-provider-ray package, please don't hesitate to reach out to the development team. You can contact us through the following channels:
 
 - **GitHub Issues**: For bug reports, feature requests, or general questions, please open an issue on our `GitHub repository`_.
-- **Slack Channel**: Join our community Slack channel `#airflow-ray`_ for real-time discussions and support.
+- **Slack Channel**: Join Apache Airflow's `Slack <https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ>`_. Visit ``#airflow-ray`` for discussions and help.
 
 We appreciate your input and are committed to improving this package to better serve the community.
 

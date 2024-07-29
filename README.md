@@ -220,7 +220,7 @@ RAY_TASK_CONFIG = {
 @dag(
     dag_id="ray_taskflow_example",
     start_date=datetime(2023, 1, 1),
-    schedule_interval=timedelta(days=1),
+    schedule=timedelta(days=1),
     catchup=False,
     default_args={
         "owner": "airflow",
@@ -270,7 +270,7 @@ Remember to adjust file paths, connection IDs, and other specifics according to 
 If you have any questions, issues, or feedback regarding the astro-provider-ray package, please don't hesitate to reach out to the development team. You can contact us through the following channels:
 
 - **GitHub Issues**: For bug reports, feature requests, or general questions, please open an issue on our [GitHub repository](https://github.com/astronomer/astro-provider-ray/issues).
-- **Slack Channel**: Join our community Slack channel [#airflow-ray](https://astronomer-community.slack.com/archives/C01234567) for real-time discussions and support.
+- **Slack Channel**: Join Apache Airflow's [Slack](https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ). Visit `#airflow-ray` for discussions and help.
 
 We appreciate your input and are committed to improving this package to better serve the community.
 
