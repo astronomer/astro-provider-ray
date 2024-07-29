@@ -5,7 +5,6 @@ This repository provides tools for integrating [Apache Airflow®](https://airflo
 ## Table of Contents
 
 - [Components](#components)
-- [Compatibility](#compatibility)
 - [Example Usage](#example-usage)
 - [Contact the Devs](#contact-the-devs)
 - [Changelog](#changelog)
