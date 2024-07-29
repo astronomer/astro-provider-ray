@@ -1,44 +1,39 @@
 # astro-provider-ray
 
-This repository provides a set of tools for integrating [Apache Airflow®](https://airflow.apache.org/) with Ray, enabling the orchestration of Ray jobs within Airflow workflows. It includes a decorator, two operators, and one trigger designed to efficiently manage and monitor Ray jobs and services.
+This repository provides tools for integrating [Apache Airflow®](https://airflow.apache.org/) with Ray, enabling the orchestration of Ray jobs within Airflow workflows. It includes a decorator, two operators, and one trigger designed to efficiently manage and monitor Ray jobs and services.
+
+
 
 ## Table of Contents
+
 - [Components](#components)
-  - [Hooks](#hooks)
-  - [Decorators](#decorators)
-  - [Operators](#operators)
-  - [Triggers](#triggers)
 - [Compatibility](#compatibility)
 - [Example Usage](#example-usage)
-  - [1. Setting up the connection](#1-setting-up-the-connection)
-    - [For SubmitRayJob operator (using an existing Ray cluster)](#for-submitrayjob-operator-using-an-existing-ray-cluster)
-    - [For SetupRayCluster and DeleteRayCluster operators](#for-setupraycluster-and-deleteraycluster-operators)
-  - [2. Setting up the Ray cluster spec](#2-setting-up-the-ray-cluster-spec)
-  - [3. Code Samples](#3-code-samples)
-    - [Scenario 1: Setting up a Ray cluster on an existing Kubernetes cluster](#scenario-1-setting-up-a-ray-cluster-on-an-existing-kubernetes-cluster)
-    - [Scenario 2: Using an existing Ray cluster](#scenario-2-using-an-existing-ray-cluster)
-- [Contact the devs](#contact-the-devs)
+- [Contact the Devs](#contact-the-devs)
 - [Changelog](#changelog)
 - [Contributing Guide](#contributing-guide)
 
-### Components
+## Components
 
-#### Hooks
-- **RayHook**: This hook is used to setup the methods needed to run the operators. It works in the background along with the connection of type 'Ray' to setup & delete ray clusters and also submit Ray jobs to existing clusters
+### Hooks
 
-#### Decorators
-- **_RayDecoratedOperator**: This decorator allows you to submit a job to a Ray cluster. It simplifies the integration process by decorating your task functions to work seamlessly with Ray.
+- **RayHook**: Sets up methods needed to run operators and decorators, working with the 'Ray' connection type to manage Ray clusters and submit jobs.
 
-#### Operators
+### Decorators
 
-- **SetupRayCluster**: Placeholder -- write details on cluster setup
-- **DeleteRayCluster**: Placeholder -- write details on cluster deletion
-- **SubmitRayJob**: This operator is used to submit a job to a Ray cluster using a specified host name. It facilitates scheduling Ray jobs to execute at defined intervals.
+- **_RayDecoratedOperator**: Simplifies integration by decorating task functions to work seamlessly with Ray.
 
-#### Triggers
-- **RayJobTrigger**: This trigger monitors the status of asynchronous jobs submitted via the `SubmitRayJob` operator. It ensures that the Airflow task waits until the job is completed before proceeding with the next step in the DAG.
+### Operators
 
-### Compatibility
+- **SetupRayCluster**: (Placeholder for cluster setup details)
+- **DeleteRayCluster**: (Placeholder for cluster deletion details)
+- **SubmitRayJob**: Submits jobs to a Ray cluster using a specified host name.
+
+### Triggers
+
+- **RayJobTrigger**: Monitors asynchronous job execution submitted via `SubmitRayJob` or using the `@task.ray()` decorator.
+
+## Compatibility
 
 These operators have been tested with the below versions. They will most likely be compatible with future versions but have not yet been tested.
 
@@ -47,50 +42,28 @@ These operators have been tested with the below versions. They will most likely 
 | 3.11           | 2.9.0           | 2.23.0      |
 
 
-### Example Usage
+## Example Usage
 
-Before using the astro-provider-ray, you need to set up a few things:
+### 1. Setting up the connection
 
-#### 1. Setting up the connection
+#### For SubmitRayJob operator (using an existing Ray cluster)
 
-To use this provider, you need to set up a connection in Airflow. The fields you need to fill depend on which operators you plan to use:
+- Connection Type: "Ray"
+- Connection ID: e.g., "ray_conn"
+- Ray dashboard URL: URL of the Ray dashboard
+- Other optional fields: Cookies, Metadata, Headers, Verify SSL
 
-1. Go to the Airflow UI and navigate to Admin -> Connections.
-2. Click on "Create" to add a new connection.
-3. Set the Connection Type to "Ray".
+#### For SetupRayCluster and DeleteRayCluster operators
 
-##### For SubmitRayJob operator (using an existing Ray cluster):
+- Connection Type: "Ray"
+- Connection ID: e.g., "ray_k8s_conn"
+- Kube config path OR Kube config content (JSON format)
+- Namespace: The k8 namespace where your cluster must be created. If not provided, "default" is used
+- Optional fields: Cluster context, Disable SSL, Disable TCP keepalive
 
-If you already have a Ray cluster and want to submit jobs to it, fill in these fields:
+### 2. Setting up the Ray cluster spec
 
-- Connection ID: A unique identifier for this connection (e.g., "ray_conn")
-- Ray dashboard url : The URL of the Ray dashboard
-- Create cluster if needed: Leave unchecked
-- Cookies: Any cookies required for authentication (optional)
-- Metadata: Any additional metadata (optional)
-- Headers: Any additional headers (optional)
-- Verify: Check this box to verify SSL certificates
-
-##### For SetupRayCluster and DeleteRayCluster operators:
-
-If you want to set up or delete Ray clusters on Kubernetes, you need to provide Kubernetes configuration. Fill in these fields:
-
-- Connection ID: A unique identifier for this connection (e.g., "ray_k8s_conn")
-- Kube config path: Path to your kubeconfig file
-  OR
-- Kube config: Paste your kubeconfig content in JSON format
-- Namespace: The Kubernetes namespace to use (optional, defaults to "default")
-- Cluster context: The Kubernetes cluster context to use (optional)
-- Disable SSL: Check this box to disable SSL verification (if needed)
-- Disable TCP keepalive: Check this box to disable TCP keepalive (if needed)
-
-**Note:** The `kube_config_path` and `kube_config` options are mutually exclusive. You can only use one at a time.
-
-After setting up the appropriate connection, you can use it in your DAGs by referencing the Connection ID you specified. Make sure to use the correct connection ID based on the operators you're using in your DAG.
-
-#### 2. Setting up the Ray cluster spec
-
-For the `SetupRayCluster` and `DeleteRayCluster` operators, you need to provide a Ray cluster specification. This is typically a YAML file that defines the configuration of your Ray cluster. Here's a basic example:
+Create a YAML file defining your Ray cluster configuration. Example:
 
 ```yaml
 # ray.yaml
@@ -161,15 +134,14 @@ Save this file in a location accessible to your Airflow installation, and refere
 
 **Note:** `spec.headGroupSpec.serviceType` must be a 'LoadBalancer' to spin a service that exposes your dashboard
 
-#### 3. Code Samples
+### 3. Code Samples
 
 There are two main scenarios for using this provider:
 
-##### Scenario 1: Setting up a Ray cluster on an existing Kubernetes cluster
+#### Scenario 1: Setting up a Ray cluster on an existing Kubernetes cluster
 
-If you have an existing Kubernetes cluster and want to install a Ray cluster on it, then run a Ray job, you can use the `SetupRayCluster`, `SubmitRayJob`, and `DeleteRayCluster` operators. Here's an example DAG (`setup_teardown.py`):
+If you have an existing Kubernetes cluster and want to install a Ray cluster on it, and then run a Ray job, you can use the `SetupRayCluster`, `SubmitRayJob`, and `DeleteRayCluster` operators. Here's an example DAG (`setup_teardown.py`):
 
-The provided `setup_teardown.py` script demonstrates how to configure and use the `SetupRayCluster`, `DeleteRayCluster` and the `SubmitRayJob` operators within an Airflow DAG:
 
 ```python
 from airflow import DAG
@@ -183,6 +155,7 @@ default_args = {
     "retry_delay": timedelta(minutes=0),
 }
 
+CONN_ID = "ray_k8s_conn"
 RAY_SPEC = "/usr/local/airflow/dags/scripts/ray.yaml"
 RAY_RUNTIME_ENV = {"working_dir": "/usr/local/airflow/example_dags/ray_scripts"}
 
@@ -190,12 +163,12 @@ dag = DAG(
     "Setup_Teardown",
     default_args=default_args,
     description="Setup Ray cluster and submit a job",
-    schedule_interval=None,
+    schedule=None,
 )
 
 setup_cluster = SetupRayCluster(
     task_id="SetupRayCluster",
-    conn_id="ray_conn",
+    conn_id=CONN_ID,
     ray_cluster_yaml=RAY_SPEC,
     use_gpu=False,
     update_if_exists=False,
@@ -204,7 +177,7 @@ setup_cluster = SetupRayCluster(
 
 submit_ray_job = SubmitRayJob(
     task_id="SubmitRayJob",
-    conn_id="ray_conn",
+    conn_id=CONN_ID,
     entrypoint="python script.py",
     runtime_env=RAY_RUNTIME_ENV,
     num_cpus=1,
@@ -221,7 +194,7 @@ submit_ray_job = SubmitRayJob(
 
 delete_cluster = DeleteRayCluster(
     task_id="DeleteRayCluster",
-    conn_id="ray_conn",
+    conn_id=CONN_ID,
     ray_cluster_yaml=RAY_SPEC,
     use_gpu=False,
     dag=dag,
@@ -232,9 +205,11 @@ setup_cluster.as_setup() >> submit_ray_job >> delete_cluster.as_teardown()
 setup_cluster >> delete_cluster
 ```
 
-##### Scenario 2: Using an existing Ray cluster
+#### Scenario 2: Using an existing Ray cluster
 
-If you already have a Ray cluster set up, you can use the Ray Taskflow API to submit jobs directly. Here's an example DAG (`ray_taskflow_example.py`):
+If you already have a Ray cluster set up, you can use the `SubmitRayJob` operator or `task.ray()` decorator to submit jobs directly.
+
+In the below example(`ray_taskflow_example.py`), the `@task.ray` decorator is used to define a task that will be executed on the Ray cluster.
 
 ```python
 from airflow.decorators import dag, task as airflow_task
@@ -297,11 +272,12 @@ def ray_taskflow_dag():
 
 ray_example_dag = ray_taskflow_dag()
 ```
-In this example, the `@task.ray` decorator is used to define a task that will be executed on the Ray cluster.
+
+
 Remember to adjust file paths, connection IDs, and other specifics according to your setup.
 
-### Contact the devs
-_________
+## Contact the devs
+
 
 If you have any questions, issues, or feedback regarding the astro-provider-ray package, please don't hesitate to reach out to the development team. You can contact us through the following channels:
 
@@ -312,7 +288,7 @@ We appreciate your input and are committed to improving this package to better s
 
 
 
-### Changelog
+## Changelog
 _________
 
 We follow [Semantic Versioning](https://semver.org/) for releases.
@@ -320,7 +296,7 @@ Check [CHANGELOG.rst](https://github.com/astronomer/astro-provider-ray/blob/main
 for the latest changes.
 
 
-### Contributing Guide
+## Contributing Guide
 __________________
 
 All contributions, bug reports, bug fixes, documentation improvements, enhancements are welcome.
