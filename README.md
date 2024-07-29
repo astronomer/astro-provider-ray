@@ -2,6 +2,19 @@
 
 This repository provides a set of tools for integrating Ray with Apache Airflow, enabling the orchestration of Ray jobs within Airflow workflows. It includes a decorator, two operators, and one trigger specifically designed for managing and monitoring Ray jobs and services.
 
+## Table of Contents
+- [Components](#components)
+  - [Hooks](#hooks)
+  - [Decorators](#decorators)
+  - [Operators](#operators)
+  - [Triggers](#triggers)
+- [Compatibility](#compatibility)
+- [Example Usage](#example-usage)
+- [Contact the devs](#contact-the-devs)
+- [Changelog](#changelog)
+- [Contributing Guide](#contributing-guide)
+
+
 ### Components
 
 #### Hooks
@@ -156,6 +169,16 @@ def ray_taskflow_dag():
 
 ray_example_dag = ray_taskflow_dag()
 ```
+
+### Contact the devs
+
+If you have any questions, issues, or feedback regarding the astro-provider-ray package, please don't hesitate to reach out to the development team. You can contact us through the following channels:
+
+- **GitHub Issues**: For bug reports, feature requests, or general questions, please open an issue on our [GitHub repository](https://github.com/astronomer/astro-provider-ray/issues).
+- **Slack Channel**: Join our community Slack channel [#airflow-ray](https://astronomer-community.slack.com/archives/C01234567) for real-time discussions and support.
+
+We appreciate your input and are committed to improving this package to better serve the community.
+
 
 
 ### Changelog
