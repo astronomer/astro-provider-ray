@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from functools import cached_property, partial
+from functools import cached_property
 from typing import Any, AsyncIterator
 
 from airflow.triggers.base import BaseTrigger, TriggerEvent
@@ -38,6 +38,7 @@ class RayJobTrigger(BaseTrigger):
         self.dashboard_url = xcom_dashboard_url
         self.fetch_logs = fetch_logs
         self.poll_interval = poll_interval
+        self.log_iterator: AsyncIterator[str] | None = None
 
     def serialize(self) -> tuple[str, dict[str, Any]]:
         """
@@ -78,17 +79,18 @@ class RayJobTrigger(BaseTrigger):
             self.log.info(f"Polling for job {self.job_id} every {self.poll_interval} seconds...")
 
             while not self._is_terminal_state():
-                await asyncio.sleep(self.poll_interval)
+                if self.log_iterator is None:
+                    self.log_iterator = self.hook.get_ray_tail_logs(self.job_id)
 
-            self.log.info(f"Fetch logs flag is set to : {self.fetch_logs}")
-            if self.fetch_logs:
-                # Stream logs if available
-                loop = asyncio.get_event_loop()
-                logs = await loop.run_in_executor(None, partial(self.hook.get_ray_job_logs, job_id=self.job_id))
-                self.log.info(f"::group::{self.job_id} logs")
-                for log in logs.split("\n"):
-                    self.log.info(log)
-                self.log.info("::endgroup::")
+                # Check for new log lines
+                try:
+                    async for line in self.log_iterator:
+                        self.log.info(line)
+                except StopIteration:
+                    # No more logs available at this time
+                    pass
+
+                await asyncio.sleep(self.poll_interval)
 
             completed_status = self.hook.get_ray_job_status(self.job_id)
             self.log.info(f"Status of completed job {self.job_id} is: {completed_status}")
