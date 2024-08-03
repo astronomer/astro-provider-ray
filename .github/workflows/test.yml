@@ -108,11 +108,11 @@ jobs:
       - name: Create GKE cluster
         run: |
           gcloud container clusters create integration-test-cluster \
-            --zone us-central1-a \
             --num-nodes 2 \
             --machine-type e2-standard-8 \
             --no-enable-autoupgrade \
-            --no-enable-autorepair
+            --no-enable-autorepair \
+            --no-enable-ip-alias
       - name: Get kubeconfig
         run: |
           gcloud container clusters get-credentials integration-test-cluster --zone us-central1-a
