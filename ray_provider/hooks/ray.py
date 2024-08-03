@@ -193,13 +193,13 @@ class RayHook(KubernetesHook):  # type: ignore
     async def get_ray_tail_logs(self, job_id: str) -> AsyncIterator[str]:
         """
         Tails the logs of a submitted job asynchronously.
+
         :param job_id: The ID of the job.
         :return: An async iterator of log lines.
         """
         client = self.ray_client
-        iterator = await client.tail_job_logs(job_id)
-        for line in iterator:
-            yield line
+        async for lines in client.tail_job_logs(job_id):
+            yield lines
 
     def load_yaml_content(self, path_or_link: str) -> Any:
         """
