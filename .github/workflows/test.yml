@@ -111,6 +111,7 @@ jobs:
             --zone us-central1-a \
             --num-nodes 2 \
             --machine-type e2-standard-8 \
+            -—impersonate-service-account ${{ secrets.SERVICE_ACCOUNT }} \
             --no-enable-autoupgrade \
             --no-enable-autorepair \
             --no-enable-ip-alias
