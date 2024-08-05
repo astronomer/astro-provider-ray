@@ -290,7 +290,6 @@ class RayHook(KubernetesHook):  # type: ignore
                     all_ports_open = True
                     for port in lb_details["ports"]:
                         if not self._is_port_open(hostname, port["port"]):
-                            self.log.info(f"Port {port['port']} is not open yet.")
                             all_ports_open = False
                             break
 
