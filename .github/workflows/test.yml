@@ -100,7 +100,17 @@ jobs:
         with:
           project_id: ${{ secrets.PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
-          export_default_credentials: true
+
+      - name: Authenticate to Google Cloud
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" | base64 --decode > /tmp/service_account_key.json
+          gcloud auth activate-service-account --key-file=/tmp/service_account_key.json
+
+      - name: Verify Authentication
+        run: |
+          gcloud auth list
+          gcloud config list account --format "value(core.account)"
+
       - name: Verify Service Account
         run: gcloud auth list
       - name: Create GKE cluster
@@ -112,7 +122,7 @@ jobs:
             --no-enable-autoupgrade \
             --no-enable-autorepair \
             --no-enable-ip-alias \
-            --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }}
+
       - name: Get kubeconfig
         run: |
           gcloud container clusters get-credentials integration-test-cluster --zone us-central1-a
