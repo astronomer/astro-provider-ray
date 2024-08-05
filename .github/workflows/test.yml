@@ -105,6 +105,9 @@ jobs:
         uses: 'google-github-actions/setup-gcloud@v2'
         with:
           version: '>= 363.0.0'
+      - name: Print Service Account Roles
+        run: |
+          gcloud projects get-iam-policy astronomer-cloud --format=json | jq '.bindings[] | select(.members[] | contains("'${{ secrets.SERVICE_ACCOUNT }}'")) | .role'
       - name: Create GKE cluster
         run: |
           gcloud container clusters create integration-test-cluster \
