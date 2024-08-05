@@ -109,7 +109,6 @@ jobs:
         run: |
           gcloud container clusters create integration-test-cluster \
             --project astronomer-cloud \
-            --service-account ${{ secrets.SERVICE_ACCOUNT }} \
             --zone us-central1-a \
             --num-nodes 2 \
             --machine-type e2-standard-8 \
