@@ -101,7 +101,6 @@ jobs:
           project_id: ${{ secrets.PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
-          version: '>= 363.0.0'
       - name: Create GKE cluster
         run: |
           gcloud container clusters create integration-test-cluster \
