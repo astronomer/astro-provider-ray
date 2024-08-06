@@ -299,8 +299,8 @@ class RayHook(KubernetesHook):  # type: ignore
             self.log.info(f"Attempt {attempt}: Checking LoadBalancer status...")
 
             try:
-                service = self._get_service(service_name, namespace)
-                lb_details = self._get_load_balancer_details(service)
+                service: client.V1Service = self._get_service(service_name, namespace)
+                lb_details: dict[str, Any] | None = self._get_load_balancer_details(service)
 
                 if not lb_details:
                     self.log.info("LoadBalancer details not available yet.")

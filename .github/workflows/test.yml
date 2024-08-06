@@ -118,7 +118,7 @@ jobs:
           --no-enable-autoupgrade \
           --no-enable-autorepair \
           --no-enable-ip-alias \
-          --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }} \
+          --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }}
 
       - name: Setup gcloud and get kubeconfig
         run: |
