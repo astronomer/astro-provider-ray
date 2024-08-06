@@ -117,7 +117,8 @@ jobs:
           --machine-type e2-standard-8 \
           --no-enable-autoupgrade \
           --no-enable-autorepair \
-          --no-enable-ip-alias
+          --no-enable-ip-alias \
+          --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }}
 
       - name: Get kubeconfig
         run: |
