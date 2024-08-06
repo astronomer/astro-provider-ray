@@ -114,15 +114,11 @@ jobs:
           gcloud container clusters create integration-test-cluster \
           --zone us-central1-a \
           --num-nodes 2 \
-          --max-cpu 16 \
-          --max-memory 30 \
           --machine-type e2-standard-8 \
           --no-enable-autoupgrade \
           --no-enable-autorepair \
           --no-enable-ip-alias \
-          --enable-autoprovisioning \
           --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }} \
-          --autoprovisioning-service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }}
 
       - name: Get kubeconfig
         run: |
