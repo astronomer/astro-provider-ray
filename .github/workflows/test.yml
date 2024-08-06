@@ -112,13 +112,13 @@ jobs:
       - name: Create GKE cluster
         run: |
           gcloud container clusters create integration-test-cluster \
-            --zone us-central1-a \
-            --num-nodes 2 \
-            --machine-type e2-standard-8 \
-            --no-enable-autoupgrade \
-            --no-enable-autorepair \
-            --no-enable-ip-alias \
-            --service-account="oss-ray-provider@astronomer-cloud.iam.gserviceaccount.com"
+          --zone us-central1-a \
+          --num-nodes 2 \
+          --machine-type e2-standard-8 \
+          --no-enable-autoupgrade \
+          --no-enable-autorepair \
+          --no-enable-ip-alias \
+          --impersonate-service-account="oss-ray-provider@astronomer-cloud.iam.gserviceaccount.com"
 
       - name: Get kubeconfig
         run: |
