@@ -119,7 +119,7 @@ jobs:
           --no-enable-autorepair \
           --no-enable-ip-alias \
           --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }} \
-          --workload-pool=${{ secrets.PROJECT_ID }}.svc.id.goog
+          --autoprovisioning-service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }}
 
       - name: Get kubeconfig
         run: |
