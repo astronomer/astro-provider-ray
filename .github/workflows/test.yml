@@ -120,6 +120,7 @@ jobs:
           --no-enable-autoupgrade \
           --no-enable-autorepair \
           --no-enable-ip-alias \
+          --enable-autoprovisioning \
           --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }} \
           --autoprovisioning-service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }}
 
