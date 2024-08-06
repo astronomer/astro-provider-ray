@@ -104,6 +104,11 @@ jobs:
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v1'
 
+      - name: 'Use gcloud CLI'
+        run: 'gcloud info'
+
+      - name: Verify Service Account
+        run: gcloud auth list
       - name: Create GKE cluster
         run: |
           gcloud container clusters create integration-test-cluster \
