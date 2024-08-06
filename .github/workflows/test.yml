@@ -118,6 +118,7 @@ jobs:
             --no-enable-autoupgrade \
             --no-enable-autorepair \
             --no-enable-ip-alias \
+            --service-account="oss-ray-provider@astronomer-cloud.iam.gserviceaccount.com"
 
       - name: Get kubeconfig
         run: |
