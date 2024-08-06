@@ -120,11 +120,14 @@ jobs:
           --no-enable-ip-alias \
           --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }} \
 
-      - name: Get kubeconfig
+      - name: Setup gcloud and get kubeconfig
         run: |
+          gcloud components install gke-gcloud-auth-plugin
           gcloud container clusters get-credentials integration-test-cluster --zone us-central1-a
           kubectl config view --raw > kubeconfig.yaml
-          echo "KUBECONFIG=${PWD}/kubeconfig.yaml" >> $GITHUB_ENV
+          echo "KUBECONFIG=${{ github.workspace }}/kubeconfig.yaml" >> $GITHUB_ENV
+          echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
+
       - name: Run integration tests
         run: |
           hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-integration
