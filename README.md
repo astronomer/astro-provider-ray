@@ -28,11 +28,15 @@ This repository provides tools for integrating [Apache Airflow®](https://airflo
 
 ### Triggers
 
-- **RayJobTrigger**: Monitors asynchronous job execution submitted via `SubmitRayJob` or using the `@task.ray()` decorator.
+- **RayJobTrigger**: Monitors asynchronous job execution submitted via `SubmitRayJob` or using the `@ray.task()` decorator.
 
 ## Example Usage
 
-### 1. Setting up the connection
+### 1. Pre-requisites
+
+The `SetupRayCluster` and the `DeleteRayCluster` operator require helm to install the kuberay operator. See the [installing Helm](https://helm.sh/docs/intro/install/) page for more details.
+
+### 2. Setting up the connection
 
 #### For SubmitRayJob operator (using an existing Ray cluster)
 
@@ -49,7 +53,7 @@ This repository provides tools for integrating [Apache Airflow®](https://airflo
 - Namespace: The k8 namespace where your cluster must be created. If not provided, "default" is used
 - Optional fields: Cluster context, Disable SSL, Disable TCP keepalive
 
-### 2. Setting up the Ray cluster spec
+### 3. Setting up the Ray cluster spec
 
 Create a YAML file defining your Ray cluster configuration. Example:
 
@@ -122,7 +126,7 @@ Save this file in a location accessible to your Airflow installation, and refere
 
 **Note:** `spec.headGroupSpec.serviceType` must be a 'LoadBalancer' to spin a service that exposes your dashboard
 
-### 3. Code Samples
+### 4. Code Samples
 
 There are two main scenarios for using this provider:
 
@@ -133,6 +137,7 @@ If you have an existing Kubernetes cluster and want to install a Ray cluster on 
 
 ```python
 from airflow import DAG
+from pathlib import Path
 from datetime import datetime, timedelta
 from ray_provider.operators.ray import SetupRayCluster, DeleteRayCluster, SubmitRayJob
 
@@ -195,14 +200,14 @@ setup_cluster >> delete_cluster
 
 #### Scenario 2: Using an existing Ray cluster
 
-If you already have a Ray cluster set up, you can use the `SubmitRayJob` operator or `task.ray()` decorator to submit jobs directly.
+If you already have a Ray cluster set up, you can use the `SubmitRayJob` operator or `ray.task()` decorator to submit jobs directly.
 
-In the below example(`ray_taskflow_example.py`), the `@task.ray` decorator is used to define a task that will be executed on the Ray cluster.
+In the below example(`ray_taskflow_example.py`), the `@ray.task` decorator is used to define a task that will be executed on the Ray cluster.
 
 ```python
-from airflow.decorators import dag, task as airflow_task
+from airflow.decorators import dag, task
 from datetime import datetime, timedelta
-from ray_provider.decorators.ray import task
+from ray_provider.decorators.ray import ray
 
 RAY_TASK_CONFIG = {
     "conn_id": "ray_conn",
@@ -231,13 +236,13 @@ RAY_TASK_CONFIG = {
 )
 def ray_taskflow_dag():
 
-    @airflow_task
+    @task
     def generate_data():
         import numpy as np
 
         return np.random.rand(100).tolist()
 
-    @task.ray(config=RAY_TASK_CONFIG)
+    @ray.task(config=RAY_TASK_CONFIG)
     def process_data_with_ray(data):
         import ray
         import numpy as np
