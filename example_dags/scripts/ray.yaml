@@ -20,11 +20,11 @@ spec:
           image: rayproject/ray-ml:latest
           resources:
             limits:
-              cpu: 4
-              memory: 8Gi
+              cpu: 1
+              memory: 3Gi
             requests:
-              cpu: 4
-              memory: 8Gi
+              cpu: 1
+              memory: 3Gi
           lifecycle:
             preStop:
               exec:
@@ -42,9 +42,9 @@ spec:
             name: metrics
   workerGroupSpecs:
   - groupName: small-group
-    replicas: 2
-    minReplicas: 2
-    maxReplicas: 5
+    replicas: 1
+    minReplicas: 1
+    maxReplicas: 2
     rayStartParams:
       block: "true"
     template:
@@ -55,8 +55,8 @@ spec:
           image: rayproject/ray-ml:latest
           resources:
             limits:
-              cpu: 2
-              memory: 4Gi
+              cpu: 1
+              memory: 1Gi
             requests:
-              cpu: 2
-              memory: 4Gi
+              cpu: 1
+              memory: 1Gi

@@ -5,7 +5,7 @@ from airflow.decorators.base import _TaskDecorator
 from airflow.exceptions import AirflowException
 from airflow.utils.context import Context
 
-from ray_provider.decorators.ray import _RayDecoratedOperator, task
+from ray_provider.decorators.ray import _RayDecoratedOperator, ray
 from ray_provider.operators.ray import SubmitRayJob
 
 DEFAULT_DATE = "2023-01-01"
@@ -169,14 +169,14 @@ class TestRayDecoratedOperator:
 
 class TestRayTaskDecorator:
     def test_ray_task_decorator(self):
-        @task.ray()
+        @ray.task()
         def dummy_function():
             return "dummy"
 
         assert isinstance(dummy_function, _TaskDecorator)
 
     def test_ray_task_decorator_with_multiple_outputs(self):
-        @task.ray(multiple_outputs=True)
+        @ray.task(multiple_outputs=True)
         def dummy_function():
             return {"key": "value"}
 
@@ -189,7 +189,7 @@ class TestRayTaskDecorator:
             "memory": 1024,
         }
 
-        @task.ray(**config)
+        @ray.task(**config)
         def dummy_function():
             return "dummy"
 
