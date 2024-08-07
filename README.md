@@ -5,7 +5,7 @@ This repository provides tools for integrating [Apache Airflow®](https://airflo
 ## Table of Contents
 
 - [Components](#components)
-- [Example Usage](#example-usage)
+- [Quickstart](#quickstart)
 - [Contact the Devs](#contact-the-devs)
 - [Changelog](#changelog)
 - [Contributing Guide](#contributing-guide)
@@ -30,13 +30,18 @@ This repository provides tools for integrating [Apache Airflow®](https://airflo
 
 - **RayJobTrigger**: Monitors asynchronous job execution submitted via `SubmitRayJob` or using the `@ray.task()` decorator.
 
-## Example Usage
+## Quickstart
 
 ### 1. Pre-requisites
 
 The `SetupRayCluster` and the `DeleteRayCluster` operator require helm to install the kuberay operator. See the [installing Helm](https://helm.sh/docs/intro/install/) page for more details.
 
-### 2. Setting up the connection
+### 2. Installation
+```sh
+pip install astro-provider-ray
+```
+
+### 3. Setting up the connection
 
 #### For SubmitRayJob operator (using an existing Ray cluster)
 
@@ -53,7 +58,7 @@ The `SetupRayCluster` and the `DeleteRayCluster` operator require helm to instal
 - Namespace: The k8 namespace where your cluster must be created. If not provided, "default" is used
 - Optional fields: Cluster context, Disable SSL, Disable TCP keepalive
 
-### 3. Setting up the Ray cluster spec
+### 4. Setting up the Ray cluster spec
 
 Create a YAML file defining your Ray cluster configuration. Example:
 
@@ -126,20 +131,22 @@ Save this file in a location accessible to your Airflow installation, and refere
 
 **Note:** `spec.headGroupSpec.serviceType` must be a 'LoadBalancer' to spin a service that exposes your dashboard
 
-### 4. Code Samples
+### 5. Code Samples
 
 There are two main scenarios for using this provider:
 
 #### Scenario 1: Setting up a Ray cluster on an existing Kubernetes cluster
 
-If you have an existing Kubernetes cluster and want to install a Ray cluster on it, and then run a Ray job, you can use the `SetupRayCluster`, `SubmitRayJob`, and `DeleteRayCluster` operators. Here's an example DAG (`setup_teardown.py`):
+If you have an existing Kubernetes cluster and want to install a Ray cluster on it, and then run a Ray job, you can use the `SetupRayCluster`, `SubmitRayJob`, and `DeleteRayCluster` operators. Here's an example DAG (`setup-teardown.py`):
 
 
 ```python
-from airflow import DAG
-from pathlib import Path
 from datetime import datetime, timedelta
-from ray_provider.operators.ray import SetupRayCluster, DeleteRayCluster, SubmitRayJob
+from pathlib import Path
+
+from airflow import DAG
+
+from ray_provider.operators.ray import DeleteRayCluster, SetupRayCluster, SubmitRayJob
 
 default_args = {
     "owner": "airflow",
@@ -148,9 +155,9 @@ default_args = {
     "retry_delay": timedelta(minutes=0),
 }
 
-CONN_ID = "ray_k8s_conn"
-RAY_SPEC = "/usr/local/airflow/dags/scripts/ray.yaml"
-RAY_RUNTIME_ENV = {"working_dir": "/usr/local/airflow/example_dags/ray_scripts"}
+
+RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
+FOLDER_PATH = Path(__file__).parent / "ray_scripts"
 
 dag = DAG(
     "Setup_Teardown",
@@ -161,8 +168,8 @@ dag = DAG(
 
 setup_cluster = SetupRayCluster(
     task_id="SetupRayCluster",
-    conn_id=CONN_ID,
-    ray_cluster_yaml=RAY_SPEC,
+    conn_id="ray_conn",
+    ray_cluster_yaml=str(RAY_SPEC),
     use_gpu=False,
     update_if_exists=False,
     dag=dag,
@@ -170,9 +177,9 @@ setup_cluster = SetupRayCluster(
 
 submit_ray_job = SubmitRayJob(
     task_id="SubmitRayJob",
-    conn_id=CONN_ID,
+    conn_id="ray_conn",
     entrypoint="python script.py",
-    runtime_env=RAY_RUNTIME_ENV,
+    runtime_env={"working_dir": str(FOLDER_PATH)},
     num_cpus=1,
     num_gpus=0,
     memory=0,
@@ -187,8 +194,8 @@ submit_ray_job = SubmitRayJob(
 
 delete_cluster = DeleteRayCluster(
     task_id="DeleteRayCluster",
-    conn_id=CONN_ID,
-    ray_cluster_yaml=RAY_SPEC,
+    conn_id="ray_conn",
+    ray_cluster_yaml=str(RAY_SPEC),
     use_gpu=False,
     dag=dag,
 )

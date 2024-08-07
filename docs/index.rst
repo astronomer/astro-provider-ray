@@ -73,71 +73,7 @@ For SetupRayCluster and DeleteRayCluster operators
 
 Create a YAML file defining your Ray cluster configuration. Example:
 
-.. code-block:: yaml
-
-   # ray.yaml
-   apiVersion: ray.io/v1
-   kind: RayCluster
-   metadata:
-     name: raycluster-complete
-   spec:
-     rayVersion: "2.10.0"
-     enableInTreeAutoscaling: true
-     headGroupSpec:
-       serviceType: LoadBalancer
-       rayStartParams:
-         dashboard-host: "0.0.0.0"
-         block: "true"
-       template:
-         metadata:
-           labels:
-             ray-node-type: head
-         spec:
-           containers:
-           - name: ray-head
-             image: rayproject/ray-ml:latest
-             resources:
-               limits:
-                 cpu: 4
-                 memory: 8Gi
-               requests:
-                 cpu: 4
-                 memory: 8Gi
-             lifecycle:
-               preStop:
-                 exec:
-                   command: ["/bin/sh","-c","ray stop"]
-             ports:
-             - containerPort: 6379
-               name: gcs
-             - containerPort: 8265
-               name: dashboard
-             - containerPort: 10001
-               name: client
-             - containerPort: 8000
-               name: serve
-             - containerPort: 8080
-               name: metrics
-     workerGroupSpecs:
-     - groupName: small-group
-       replicas: 2
-       minReplicas: 2
-       maxReplicas: 5
-       rayStartParams:
-         block: "true"
-       template:
-         metadata:
-         spec:
-           containers:
-           - name: machine-learning
-             image: rayproject/ray-ml:latest
-             resources:
-               limits:
-                 cpu: 2
-                 memory: 4Gi
-               requests:
-                 cpu: 2
-                 memory: 4Gi
+.. literalinclude:: ../example_dags/scripts/ray.yaml
 
 Save this file in a location accessible to your Airflow installation, and reference it in your DAG code.
 
@@ -153,67 +89,7 @@ Scenario 1: Setting up a Ray cluster on an existing Kubernetes cluster
 
 If you have an existing Kubernetes cluster and want to install a Ray cluster on it, and then run a Ray job, you can use the ``SetupRayCluster``, ``SubmitRayJob``, and ``DeleteRayCluster`` operators. Here's an example DAG (``setup_teardown.py``):
 
-.. code-block:: python
-
-   from airflow import DAG
-   from datetime import datetime, timedelta
-   from ray_provider.operators.ray import SetupRayCluster, DeleteRayCluster, SubmitRayJob
-
-   default_args = {
-       "owner": "airflow",
-       "start_date": datetime(2024, 3, 26),
-       "retries": 1,
-       "retry_delay": timedelta(minutes=0),
-   }
-
-   CONN_ID = "ray_k8s_conn"
-   RAY_SPEC = "/usr/local/airflow/dags/scripts/ray.yaml"
-   RAY_RUNTIME_ENV = {"working_dir": "/usr/local/airflow/example_dags/ray_scripts"}
-
-   dag = DAG(
-       "Setup_Teardown",
-       default_args=default_args,
-       description="Setup Ray cluster and submit a job",
-       schedule=None,
-   )
-
-   setup_cluster = SetupRayCluster(
-       task_id="SetupRayCluster",
-       conn_id=CONN_ID,
-       ray_cluster_yaml=RAY_SPEC,
-       use_gpu=False,
-       update_if_exists=False,
-       dag=dag,
-   )
-
-   submit_ray_job = SubmitRayJob(
-       task_id="SubmitRayJob",
-       conn_id=CONN_ID,
-       entrypoint="python script.py",
-       runtime_env=RAY_RUNTIME_ENV,
-       num_cpus=1,
-       num_gpus=0,
-       memory=0,
-       resources={},
-       fetch_logs=True,
-       wait_for_completion=True,
-       job_timeout_seconds=600,
-       xcom_task_key="SetupRayCluster.dashboard",
-       poll_interval=5,
-       dag=dag,
-   )
-
-   delete_cluster = DeleteRayCluster(
-       task_id="DeleteRayCluster",
-       conn_id=CONN_ID,
-       ray_cluster_yaml=RAY_SPEC,
-       use_gpu=False,
-       dag=dag,
-   )
-
-   # Create ray cluster and submit ray job
-   setup_cluster.as_setup() >> submit_ray_job >> delete_cluster.as_teardown()
-   setup_cluster >> delete_cluster
+.. literalinclude:: ../example_dags/setup-teardown.py
 
 Scenario 2: Using an existing Ray cluster
 """""""""""""""""""""""""""""""""""""""""
