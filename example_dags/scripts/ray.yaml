@@ -20,11 +20,11 @@ spec:
           image: rayproject/ray-ml:latest
           resources:
             limits:
-              cpu: 4
-              memory: 8Gi
+              cpu: 2
+              memory: 4Gi
             requests:
-              cpu: 4
-              memory: 8Gi
+              cpu: 2
+              memory: 4Gi
           lifecycle:
             preStop:
               exec:
@@ -40,15 +40,11 @@ spec:
             name: serve
           - containerPort: 8080
             name: metrics
-          - containerPort: 44217
-            name: as-metrics # autoscaler
-          - containerPort: 44227
-            name: dash-metrics # dashboard
   workerGroupSpecs:
   - groupName: small-group
-    replicas: 2
-    minReplicas: 2
-    maxReplicas: 5
+    replicas: 1
+    minReplicas: 1
+    maxReplicas: 2
     rayStartParams:
       block: "true"
     template:
@@ -59,8 +55,8 @@ spec:
           image: rayproject/ray-ml:latest
           resources:
             limits:
-              cpu: 2
-              memory: 4Gi
+              cpu: 1
+              memory: 1Gi
             requests:
-              cpu: 2
-              memory: 4Gi
+              cpu: 1
+              memory: 1Gi

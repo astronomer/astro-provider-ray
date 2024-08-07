@@ -117,9 +117,9 @@ jobs:
         run: |
           gcloud container clusters create ${{ steps.cluster-name.outputs.name }} \
           --zone us-central1-a \
-          --num-nodes 2 \
+          --num-nodes 1 \
           --machine-type e2-standard-4 \
-          --enable-autoscaling --min-nodes=1 --max-nodes=4 \
+          --enable-autoscaling --min-nodes=1 --max-nodes=3 \
           --no-enable-ip-alias \
           --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }}
 
