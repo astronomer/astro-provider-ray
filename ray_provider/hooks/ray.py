@@ -79,7 +79,7 @@ class RayHook(KubernetesHook):  # type: ignore
         self.verify = self._get_field("verify") or False
         self.ray_client_instance = None
 
-        self.namespace = self.get_namespace()
+        self.namespace = self.get_namespace() or self.DEFAULT_NAMESPACE
         self.kubeconfig: str | None = None
         self.in_cluster: bool | None = None
         self.client_configuration = None
@@ -235,7 +235,6 @@ class RayHook(KubernetesHook):  # type: ignore
     def _get_service(self, name: str, namespace: str) -> client.V1Service:
         """
         Get the Kubernetes service.
-
         :param name: The name of the service.
         :param namespace: The namespace of the service.
         :return: The Kubernetes service object.
@@ -250,16 +249,34 @@ class RayHook(KubernetesHook):  # type: ignore
     def _get_load_balancer_details(self, service: client.V1Service) -> dict[str, Any] | None:
         """
         Extract LoadBalancer details from the service.
-
         :param service: The Kubernetes service object.
         :return: A dictionary containing LoadBalancer details if available, None otherwise.
         """
         if service.status.load_balancer.ingress:
             ingress: client.V1LoadBalancerIngress = service.status.load_balancer.ingress[0]
-            ip_or_hostname: str | None = ingress.ip or ingress.hostname
-            if ip_or_hostname:
+            ip: str | None = ingress.ip
+            hostname: str | None = ingress.hostname
+            if ip or hostname:
                 ports: list[dict[str, Any]] = [{"name": port.name, "port": port.port} for port in service.spec.ports]
-                return {"ip_or_hostname": ip_or_hostname, "ports": ports}
+                return {"ip": ip, "hostname": hostname, "ports": ports}
+        return None
+
+    def _check_load_balancer_readiness(self, lb_details: dict[str, Any]) -> str | None:
+        """
+        Check if the LoadBalancer is ready by testing port connectivity.
+        :param lb_details: Dictionary containing LoadBalancer details.
+        :return: The working address (IP or hostname) if ready, None otherwise.
+        """
+        ip: str | None = lb_details["ip"]
+        hostname: str | None = lb_details["hostname"]
+
+        for port_info in lb_details["ports"]:
+            port = port_info["port"]
+            if ip and self._is_port_open(ip, port):
+                return ip
+            if hostname and self._is_port_open(hostname, port):
+                return hostname
+
         return None
 
     def wait_for_load_balancer(
@@ -271,7 +288,6 @@ class RayHook(KubernetesHook):  # type: ignore
     ) -> dict[str, Any]:
         """
         Wait for the LoadBalancer to be ready and return its details.
-
         :param service_name: The name of the LoadBalancer service.
         :param namespace: The namespace of the service.
         :param max_retries: Maximum number of retries.
@@ -281,26 +297,23 @@ class RayHook(KubernetesHook):  # type: ignore
         """
         for attempt in range(1, max_retries + 1):
             self.log.info(f"Attempt {attempt}: Checking LoadBalancer status...")
+
             try:
                 service: client.V1Service = self._get_service(service_name, namespace)
                 lb_details: dict[str, Any] | None = self._get_load_balancer_details(service)
 
-                if lb_details:
-                    hostname = lb_details["ip_or_hostname"]
-                    all_ports_open = True
-                    for port in lb_details["ports"]:
-                        if not self._is_port_open(hostname, port["port"]):
-                            self.log.info(f"Port {port['port']} is not open yet.")
-                            all_ports_open = False
-                            break
-
-                    if all_ports_open:
-                        self.log.info("All ports are open. LoadBalancer is ready.")
-                        return lb_details
-                    else:
-                        self.log.info("Not all ports are open. Waiting...")
-                else:
+                if not lb_details:
                     self.log.info("LoadBalancer details not available yet.")
+                    continue
+
+                working_address = self._check_load_balancer_readiness(lb_details)
+
+                if working_address:
+                    self.log.info("LoadBalancer is ready.")
+                    lb_details["working_address"] = working_address
+                    return lb_details
+
+                self.log.info("LoadBalancer is not ready yet. Waiting...")
 
             except AirflowException:
                 self.log.info("LoadBalancer service is not available yet...")

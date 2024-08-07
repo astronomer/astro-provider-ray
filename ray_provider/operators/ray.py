@@ -103,7 +103,7 @@ class SetupRayCluster(BaseOperator):
 
         if lb_details:
             self.log.info(lb_details)
-            dns = lb_details["ip_or_hostname"]
+            dns = lb_details["working_address"]
             for port in lb_details["ports"]:
                 url = f"http://{dns}:{port['port']}"
                 context["task_instance"].xcom_push(key=port["name"], value=url)
