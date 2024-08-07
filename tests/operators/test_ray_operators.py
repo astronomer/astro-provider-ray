@@ -109,7 +109,7 @@ class TestSetupRayCluster:
 
     def test_setup_load_balancer(self, mock_hook, operator):
         mock_hook.wait_for_load_balancer.return_value = {
-            "ip_or_hostname": "test.example.com",
+            "working_address": "test.example.com",
             "ports": [{"name": "dashboard", "port": 8265}],
         }
         context = {"task_instance": Mock()}

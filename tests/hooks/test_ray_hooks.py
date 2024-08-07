@@ -232,7 +232,7 @@ class TestRayHook:
 
         lb_details = ray_hook._get_load_balancer_details(mock_service)
 
-        assert lb_details == {"ip_or_hostname": "192.168.1.1", "ports": [{"name": "http", "port": 80}]}
+        assert lb_details == {"ip": "192.168.1.1", "hostname": None, "ports": [{"name": "http", "port": 80}]}
 
     def test_get_load_balancer_details_with_hostname(self, ray_hook):
         mock_service = Mock(spec=client.V1Service)
@@ -248,7 +248,7 @@ class TestRayHook:
 
         lb_details = ray_hook._get_load_balancer_details(mock_service)
 
-        assert lb_details == {"ip_or_hostname": "example.com", "ports": [{"name": "https", "port": 443}]}
+        assert lb_details == {"hostname": "example.com", "ip": None, "ports": [{"name": "https", "port": 443}]}
 
     def test_get_load_balancer_details_no_ingress(self, ray_hook):
         mock_service = Mock(spec=client.V1Service)
@@ -332,29 +332,32 @@ class TestRayHook:
 
     @patch("ray_provider.hooks.ray.RayHook._get_service")
     @patch("ray_provider.hooks.ray.RayHook._get_load_balancer_details")
-    @patch("ray_provider.hooks.ray.RayHook._is_port_open")
-    def test_wait_for_load_balancer_success(self, mock_is_port_open, mock_get_lb_details, mock_get_service, ray_hook):
-        # Mock the service
+    @patch("ray_provider.hooks.ray.RayHook._check_load_balancer_readiness")
+    def test_wait_for_load_balancer_success(
+        self, mock_check_readiness, mock_get_lb_details, mock_get_service, ray_hook
+    ):
         mock_service = Mock(spec=client.V1Service)
         mock_get_service.return_value = mock_service
 
-        # Mock the load balancer details
         mock_get_lb_details.return_value = {
-            "ip_or_hostname": "test-lb.example.com",
+            "hostname": "test-lb.example.com",
+            "ip": None,
             "ports": [{"name": "http", "port": 80}, {"name": "https", "port": 443}],
         }
 
-        # Mock the port check to return True (ports are open)
-        mock_is_port_open.return_value = True
+        mock_check_readiness.return_value = "test-lb.example.com"
 
-        # Call the method
         result = ray_hook.wait_for_load_balancer("test-service", namespace="default", max_retries=1, retry_interval=1)
 
-        # Assertions
-        assert result == mock_get_lb_details.return_value
+        assert result == {
+            "hostname": "test-lb.example.com",
+            "ip": None,
+            "ports": [{"name": "http", "port": 80}, {"name": "https", "port": 443}],
+            "working_address": "test-lb.example.com",
+        }
         mock_get_service.assert_called_once_with("test-service", "default")
         mock_get_lb_details.assert_called_once_with(mock_service)
-        assert mock_is_port_open.call_count == 2  # Called for both ports
+        mock_check_readiness.assert_called_once()
 
     @patch("ray_provider.hooks.ray.RayHook._get_service")
     @patch("ray_provider.hooks.ray.RayHook._get_load_balancer_details")
@@ -366,7 +369,8 @@ class TestRayHook:
 
         # Mock the load balancer details
         mock_get_lb_details.return_value = {
-            "ip_or_hostname": "test-lb.example.com",
+            "hostname": "test-lb.example.com",
+            "ip": None,
             "ports": [{"name": "http", "port": 80}],
         }
 
@@ -389,6 +393,42 @@ class TestRayHook:
             ray_hook.wait_for_load_balancer("test-service", namespace="default", max_retries=1, retry_interval=1)
 
         assert "LoadBalancer did not become ready after 1 attempts" in str(exc_info.value)
+
+    @patch("ray_provider.hooks.ray.RayHook._is_port_open")
+    def test_check_load_balancer_readiness_ip(self, mock_is_port_open, ray_hook):
+        mock_is_port_open.return_value = True
+        lb_details = {"ip": "192.168.1.1", "hostname": None, "ports": [{"name": "http", "port": 80}]}
+
+        result = ray_hook._check_load_balancer_readiness(lb_details)
+
+        assert result == "192.168.1.1"
+        mock_is_port_open.assert_called_once_with("192.168.1.1", 80)
+
+    @patch("ray_provider.hooks.ray.RayHook._is_port_open")
+    def test_check_load_balancer_readiness_hostname(self, mock_is_port_open, ray_hook):
+        mock_is_port_open.side_effect = [False, True]
+        lb_details = {
+            "ip": "192.168.1.1",
+            "hostname": "example.com",
+            "ports": [{"name": "http", "port": 80}, {"name": "https", "port": 443}],
+        }
+
+        result = ray_hook._check_load_balancer_readiness(lb_details)
+
+        assert result == "example.com"
+        mock_is_port_open.assert_any_call("192.168.1.1", 80)
+        mock_is_port_open.assert_any_call("example.com", 80)
+
+    @patch("ray_provider.hooks.ray.RayHook._is_port_open")
+    def test_check_load_balancer_readiness_not_ready(self, mock_is_port_open, ray_hook):
+        mock_is_port_open.return_value = False
+        lb_details = {"ip": "192.168.1.1", "hostname": "example.com", "ports": [{"name": "http", "port": 80}]}
+
+        result = ray_hook._check_load_balancer_readiness(lb_details)
+
+        assert result is None
+        mock_is_port_open.assert_any_call("192.168.1.1", 80)
+        mock_is_port_open.assert_any_call("example.com", 80)
 
     @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
     @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
