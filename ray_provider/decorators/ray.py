@@ -128,9 +128,9 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         return self.python_callable.__name__
 
 
-class task:
+class ray:
     @staticmethod
-    def ray(
+    def task(
         python_callable: Callable[..., Any] | None = None,
         multiple_outputs: bool | None = None,
         **kwargs: Any,

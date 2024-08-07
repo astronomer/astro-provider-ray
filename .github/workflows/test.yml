@@ -109,21 +109,24 @@ jobs:
       - name: 'Set GCP Project ID'
         run: gcloud config set project ${{ secrets.PROJECT_ID }}
 
+      - name: Generate unique cluster name
+        id: cluster-name
+        run: echo "name=test-${GITHUB_RUN_ID:0:12}" >> $GITHUB_OUTPUT
+
       - name: Create GKE cluster
         run: |
-          gcloud container clusters create integration-test-cluster \
+          gcloud container clusters create ${{ steps.cluster-name.outputs.name }} \
           --zone us-central1-a \
-          --num-nodes 2 \
-          --machine-type e2-standard-8 \
-          --no-enable-autoupgrade \
-          --no-enable-autorepair \
+          --num-nodes 1 \
+          --machine-type e2-standard-4 \
+          --enable-autoscaling --min-nodes=1 --max-nodes=3 \
           --no-enable-ip-alias \
           --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }}
 
       - name: Setup gcloud and get kubeconfig
         run: |
           gcloud components install gke-gcloud-auth-plugin
-          gcloud container clusters get-credentials integration-test-cluster --zone us-central1-a
+          gcloud container clusters get-credentials ${{ steps.cluster-name.outputs.name }} --zone us-central1-a
           kubectl config view --raw > kubeconfig.yaml
           echo "KUBECONFIG=${{ github.workspace }}/kubeconfig.yaml" >> $GITHUB_ENV
           echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
@@ -139,4 +142,4 @@ jobs:
       - name: Delete GKE cluster
         if: always()
         run: |
-          gcloud container clusters delete integration-test-cluster --zone us-central1-a --quiet
+          gcloud container clusters delete ${{ steps.cluster-name.outputs.name }} --zone us-central1-a --quiet
