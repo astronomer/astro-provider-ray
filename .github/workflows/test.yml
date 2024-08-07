@@ -111,7 +111,7 @@ jobs:
 
       - name: Generate unique cluster name
         id: cluster-name
-        run: echo "name=integration-test-cluster-${GITHUB_RUN_ID}-$(uuidgen)" >> $GITHUB_OUTPUT
+        run: echo "name=test-${GITHUB_RUN_ID:0:12}" >> $GITHUB_OUTPUT
 
       - name: Create GKE cluster
         run: |
