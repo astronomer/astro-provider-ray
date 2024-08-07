@@ -1,5 +1,4 @@
 name: test
-
 on:
   push:
     branches: [ "main" ]
@@ -45,30 +44,99 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
-
       - uses: actions/cache@v4
         with:
           path: |
             ~/.cache/pip
             .nox
           key: unit-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.airflow-version }}-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('ray_provider/__init__.py') }}
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-
       - name: Install packages and dependencies
         run: |
           python -m pip install hatch
           hatch -e tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }} run pip freeze
-
       - name: Test Ray against Airflow ${{ matrix.airflow-version }} and Python ${{ matrix.python-version }}
         run: |
           hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-cov
-
       - name: Upload coverage to Github
         uses: actions/upload-artifact@v4
         with:
           name: coverage-unit-test-${{ matrix.python-version }}-${{ matrix.airflow-version }}
           path: .coverage
+
+  Run-Integration-Tests:
+    needs: Authorize
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+        airflow-version: ["2.9"]
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            .nox
+          key: integration-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.airflow-version }}-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('ray_provider/__init__.py') }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install packages and dependencies
+        run: |
+          python -m pip install hatch
+          hatch -e tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }} run pip freeze
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          service_account: ${{ secrets.SERVICE_ACCOUNT_EMAIL }}'
+          create_credentials_file: true
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v1'
+
+      - name: 'Set GCP Project ID'
+        run: gcloud config set project ${{ secrets.PROJECT_ID }}
+
+      - name: Create GKE cluster
+        run: |
+          gcloud container clusters create integration-test-cluster \
+          --zone us-central1-a \
+          --num-nodes 2 \
+          --machine-type e2-standard-8 \
+          --no-enable-autoupgrade \
+          --no-enable-autorepair \
+          --no-enable-ip-alias \
+          --service-account=${{ secrets.SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud and get kubeconfig
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
+          gcloud container clusters get-credentials integration-test-cluster --zone us-central1-a
+          kubectl config view --raw > kubeconfig.yaml
+          echo "KUBECONFIG=${{ github.workspace }}/kubeconfig.yaml" >> $GITHUB_ENV
+          echo "USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
+
+      - name: Run integration tests
+        run: |
+          hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-integration
+      - name: Upload coverage to Github
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration-test-${{ matrix.python-version }}-${{ matrix.airflow-version }}
+          path: .coverage
+      - name: Delete GKE cluster
+        if: always()
+        run: |
+          gcloud container clusters delete integration-test-cluster --zone us-central1-a --quiet
