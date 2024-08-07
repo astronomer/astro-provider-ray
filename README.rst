@@ -77,6 +77,8 @@ For SetupRayCluster and DeleteRayCluster operators
 
 Create a YAML file defining your Ray cluster configuration. Example:
 
+.. literalinclude:: ../example_dags/scripts/ray.yaml
+
 .. code-block:: yaml
 
    # ray.yaml

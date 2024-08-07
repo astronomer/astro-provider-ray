@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from airflow.decorators import dag, task
 
@@ -7,7 +8,7 @@ from ray_provider.decorators.ray import ray
 RAY_TASK_CONFIG = {
     "conn_id": "ray_conn",
     "runtime_env": {
-        "working_dir": "/usr/local/airflow/dags/ray_scripts",
+        "working_dir": Path(__file__).parent / "ray_scripts",
         "pip": ["numpy"],
     },
     "num_cpus": 1,
