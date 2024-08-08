@@ -2,14 +2,15 @@ Welcome to astro-provider-ray documentation!
 ===================================================
 
 .. toctree::
+   :hidden:
    :maxdepth: 1
    :caption: Contents:
 
    Home <self>
+   Getting started <getting_started/setup>
+   Code Samples <getting_started/code_samples>
    API Reference <api/ray_provider>
    Contributing <CONTRIBUTING>
-   Changelog <CHANGELOG>
-   Code of Conduct <CODE_OF_CONDUCT>
 
 This repository provides tools for integrating `Apache Airflow®`_ with Ray, enabling the orchestration of Ray jobs within Airflow workflows. It includes a decorator, two operators, and one trigger designed to efficiently manage and monitor Ray jobs and services.
 
@@ -18,11 +19,53 @@ This repository provides tools for integrating `Apache Airflow®`_ with Ray, ena
 Table of Contents
 -----------------
 
+- `What is the Ray provider?`_
 - `Components`_
-- `Example Usage`_
 - `Contact the Devs`_
 - `Changelog`_
 - `Contributing Guide`_
+
+What is the Ray provider?
+-------------------------
+
+Enterprise data value extraction involves two crucial components:
+
+- Data Engineering
+- Data Science/ML/AI
+
+While Airflow excels at data engineering tasks through its extensive plugin ecosystem, it faces limitations when dealing with large-scale ETL(100s GB to PB scale) or AI tasks such as fine-tuning & deploying LLMs etc.
+
+This provider helps solve several technical usecases that ML platform teams encounter on a daily basis.
+
+
+.. image:: _static/architecture.png
+   :alt: Alternative text for the image
+   :align: center
+   :width: 499
+   :height: 561
+
+The architecture diagram above shows how we can deploy both Airflow & Ray on a Kubernetes cluster for elastic compute.
+
+
+Usecases
+^^^^^^^^
+- **Scalable ETL**: Orchestrate and monitor Ray jobs on on-demand compute clusters using the Ray Data library. These operations could be custom Python code or ML model inference.
+- **Model Training**: Schedule model training or fine-tuning jobs on flexible cadences (daily/weekly/monthly). Benefits include:
+
+  * Optimize resource utilization by scheduling Ray jobs during cost-effective periods
+  * Ensure models remain current with the latest data trends
+
+- **Model Inference**: Inference of trained or fine-tuned models can be handled in two ways:
+
+  * **Batch Inference** jobs can be incorporated into Airflow DAGs for unified workflow management and monitoring
+  * **Real time** models (or online models) can be deployed using the same operators with ``wait_for_completion=False``
+
+- **Model Ops**: Leverage Airflow tasks following Ray job tasks for model management
+
+  * Deploy models to a model registry
+  * Perform champion-challenger analysis
+  * Execute other model lifecycle management tasks
+
 
 Components
 ----------
@@ -37,97 +80,14 @@ Decorators
 
 Operators
 ^^^^^^^^^
-- **SetupRayCluster**: (Placeholder for cluster setup details)
-- **DeleteRayCluster**: (Placeholder for cluster deletion details)
-- **SubmitRayJob**: Submits jobs to a Ray cluster using a specified host name.
+- **SetupRayCluster**: Sets up or Updates a ray cluster on kubernetes using a kubeconfig input provided through the Ray connection
+- **DeleteRayCluster**: Deletes and existing Ray cluster on kubernetes using the same Ray connection
+- **SubmitRayJob**: Submits jobs to a Ray cluster using a specified host name and monitors its execution
 
 Triggers
 ^^^^^^^^
-- **RayJobTrigger**: Monitors asynchronous job execution submitted via ``SubmitRayJob`` or using the ``@task.ray()`` decorator.
+- **RayJobTrigger**: Monitors asynchronous job execution submitted via ``SubmitRayJob`` or using the ``@task.ray()`` decorator and prints real-time logs to the the Airflow UI
 
-
-5. Code Samples
-^^^^^^^^^^^^^^^
-
-There are two main scenarios for using this provider:
-
-Scenario 1: Setting up a Ray cluster on an existing Kubernetes cluster
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-If you have an existing Kubernetes cluster and want to install a Ray cluster on it, and then run a Ray job, you can use the ``SetupRayCluster``, ``SubmitRayJob``, and ``DeleteRayCluster`` operators. Here's an example DAG (``setup_teardown.py``):
-
-.. literalinclude:: ../example_dags/setup-teardown.py
-
-Scenario 2: Using an existing Ray cluster
-"""""""""""""""""""""""""""""""""""""""""
-
-If you already have a Ray cluster set up, you can use the ``SubmitRayJob`` operator or ``task.ray()`` decorator to submit jobs directly.
-
-In the below example(``ray_taskflow_example.py``), the ``@task.ray`` decorator is used to define a task that will be executed on the Ray cluster.
-
-.. code-block:: python
-
-   from airflow.decorators import dag, task as airflow_task
-   from datetime import datetime, timedelta
-   from ray_provider.decorators.ray import task
-
-   RAY_TASK_CONFIG = {
-       "conn_id": "ray_conn",
-       "runtime_env": {
-           "working_dir": "/usr/local/airflow/dags/ray_scripts",
-           "pip": ["numpy"],
-       },
-       "num_cpus": 1,
-       "num_gpus": 0,
-       "memory": 0,
-       "poll_interval": 5,
-   }
-
-
-   @dag(
-       dag_id="ray_taskflow_example",
-       start_date=datetime(2023, 1, 1),
-       schedule_interval=timedelta(days=1),
-       catchup=False,
-       default_args={
-           "owner": "airflow",
-           "retries": 1,
-           "retry_delay": timedelta(minutes=5),
-       },
-       tags=["ray", "example"],
-   )
-   def ray_taskflow_dag():
-
-       @airflow_task
-       def generate_data():
-           import numpy as np
-
-           return np.random.rand(100).tolist()
-
-       @task.ray(config=RAY_TASK_CONFIG)
-       def process_data_with_ray(data):
-           import ray
-           import numpy as np
-
-           @ray.remote
-           def square(x):
-               return x**2
-
-           ray.init()
-           data = np.array(data)
-           futures = [square.remote(x) for x in data]
-           results = ray.get(futures)
-           mean = np.mean(results)
-           print(f"Mean of squared values: {mean}")
-           return mean
-
-       data = generate_data()
-       process_data_with_ray(data)
-
-
-   ray_example_dag = ray_taskflow_dag()
-
-Remember to adjust file paths, connection IDs, and other specifics according to your setup.
 
 Contact the devs
 ----------------

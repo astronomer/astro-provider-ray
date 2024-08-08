@@ -33,7 +33,11 @@ class RayHook(KubernetesHook):  # type: ignore
 
     @classmethod
     def get_ui_field_behaviour(cls) -> dict[str, Any]:
-        """Return custom field behaviour for the connection form."""
+        """
+        Return custom field behaviour for the connection form.
+
+        :return: A dictionary specifying custom field behaviour.
+        """
         return {
             "hidden_fields": ["host", "schema", "login", "password", "port", "extra"],
             "relabeling": {},
@@ -41,7 +45,11 @@ class RayHook(KubernetesHook):  # type: ignore
 
     @classmethod
     def get_connection_form_widgets(cls) -> dict[str, Any]:
-        """Return connection widgets to add to connection form."""
+        """
+        Return connection widgets to add to connection form.
+
+        :return: A dictionary of connection form widgets.
+        """
         from flask_appbuilder.fieldwidgets import BS3PasswordFieldWidget, BS3TextFieldWidget
         from flask_babel import lazy_gettext
         from wtforms import BooleanField, PasswordField, StringField
@@ -97,7 +105,6 @@ class RayHook(KubernetesHook):  # type: ignore
     def _setup_kubeconfig(
         self, kubeconfig_path: str | None, kubeconfig_content: str | None, cluster_context: str | None
     ) -> None:
-        """Set up the kubeconfig for the hook."""
         num_selected_configuration = sum(1 for o in [kubeconfig_path, kubeconfig_content] if o)
         if num_selected_configuration > 1:
             raise AirflowException(
@@ -235,6 +242,7 @@ class RayHook(KubernetesHook):  # type: ignore
     def _get_service(self, name: str, namespace: str) -> client.V1Service:
         """
         Get the Kubernetes service.
+
         :param name: The name of the service.
         :param namespace: The namespace of the service.
         :return: The Kubernetes service object.
@@ -249,6 +257,7 @@ class RayHook(KubernetesHook):  # type: ignore
     def _get_load_balancer_details(self, service: client.V1Service) -> dict[str, Any] | None:
         """
         Extract LoadBalancer details from the service.
+
         :param service: The Kubernetes service object.
         :return: A dictionary containing LoadBalancer details if available, None otherwise.
         """
@@ -264,6 +273,7 @@ class RayHook(KubernetesHook):  # type: ignore
     def _check_load_balancer_readiness(self, lb_details: dict[str, Any]) -> str | None:
         """
         Check if the LoadBalancer is ready by testing port connectivity.
+
         :param lb_details: Dictionary containing LoadBalancer details.
         :return: The working address (IP or hostname) if ready, None otherwise.
         """
@@ -288,6 +298,7 @@ class RayHook(KubernetesHook):  # type: ignore
     ) -> dict[str, Any]:
         """
         Wait for the LoadBalancer to be ready and return its details.
+
         :param service_name: The name of the LoadBalancer service.
         :param namespace: The namespace of the service.
         :param max_retries: Maximum number of retries.

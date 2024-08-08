@@ -4,7 +4,7 @@
 
 <div align="center">
 
-:books: [Docs]() &nbsp; | &nbsp; :rocket: [Getting Started]() &nbsp; | &nbsp; :speech_balloon: [Slack](https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ) (``#airflow-ray``)&nbsp; | &nbsp; :fire: [Contribute]() &nbsp;
+:books: [Docs](https://astronomer.github.io/astro-provider-ray/) &nbsp; | &nbsp; :rocket: [Getting Started](https://astronomer.github.io/astro-provider-ray/getting_started/setup.html) &nbsp; | &nbsp; :speech_balloon: [Slack](https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ) (``#airflow-ray``)&nbsp; | &nbsp; :fire: [Contribute](https://astronomer.github.io/astro-provider-ray/CONTRIBUTING.html) &nbsp;
 
 </div>
 
@@ -25,7 +25,7 @@ Benefits of using this provider include:
 - [Contributing Guide](#contributing-guide)
 
 ## Quickstart
-Check out the Getting Started guide in our [docs](). Sample DAGs are available at `example_dags/`.
+Check out the Getting Started guide in our [docs](https://astronomer.github.io/astro-provider-ray/getting_started/setup.html). Sample DAGs are available at [example_dags/](https://github.com/astronomer/astro-provider-ray/tree/main/example_dags).
 
 ## Sample DAGs
 

@@ -23,10 +23,10 @@ CHANGELOG
    * - Decorator Class
      - Import Path
 
-   * - ``task.ray()``
+   * - ``ray.task()``
      - .. code-block:: python
 
-            from ray_provider.decorators.ray import task
+            from ray_provider.decorators.ray import ray
 
 .. list-table::
    :header-rows: 1

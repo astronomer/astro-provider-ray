@@ -3,7 +3,7 @@ Contributions
 
 Hi there! We're thrilled that you'd like to contribute to this project. Your help is essential for keeping it great.
 
-Please note that this project is released with a `Contributor Code of Conduct <./docs/CODE_OF_CONDUCT>`_.
+Please note that this project is released with a `Contributor Code of Conduct <https://github.com/astronomer/astro-provider-ray/tree/main/docs/CODE_OF_CONDUCT>`_.
 By participating in this project you agree to abide by its terms.
 
 Overview
@@ -11,7 +11,7 @@ Overview
 
 The astro-provider-ray source code is available on this GitHub `page <https://github.com/astronomer/astro-provider-ray>`_
 
-To contribute to the **Astro Ray** project:
+To contribute to the **Ray provider** project:
 
 #. Please create a `GitHub Issue <https://github.com/astronomer/astro-provider-ray/issues>`_ describing your contribution.
 #. Open a feature branch off of the ``main`` branch and create a Pull Request into the ``main`` branch from your feature branch.
