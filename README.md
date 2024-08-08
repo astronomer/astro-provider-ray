@@ -20,16 +20,41 @@ Benefits of using this provider include:
 
 ## Table of Contents
 - [Quickstart](#quickstart)
-- [Contact the Devs](#contact-the-devs)
+- [Sample DAGs](#sample-dags)
 - [Changelog](#changelog)
 - [Contributing Guide](#contributing-guide)
 
 ## Quickstart
 Check out the Getting Started guide in our [docs](). Sample DAGs are available at `example_dags/`.
 
-## Example Usage
+## Sample DAGs
 
 ```python
+from datetime import datetime, timedelta
+from pathlib import Path
+
+from airflow import DAG
+
+from ray_provider.operators.ray import SetupRayCluster, SubmitRayJob, DeleteRayCluster
+
+default_args = {
+    "owner": "airflow",
+    "start_date": datetime(2024, 3, 26),
+    "retries": 1,
+    "retry_delay": timedelta(minutes=0),
+}
+
+
+RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
+FOLDER_PATH = Path(__file__).parent / "ray_scripts"
+
+dag = DAG(
+    "Setup_Teardown",
+    default_args=default_args,
+    description="Setup Ray cluster and submit a job",
+    schedule=None,
+)
+
 setup_cluster = SetupRayCluster(
     task_id="SetupRayCluster",
     conn_id="ray_conn",
@@ -63,34 +88,84 @@ delete_cluster = DeleteRayCluster(
     use_gpu=False,
     dag=dag,
 )
+
+# Create ray cluster and submit ray job
+setup_cluster.as_setup() >> submit_ray_job >> delete_cluster.as_teardown()
+setup_cluster >> delete_cluster
 ```
 
 ```python
-@ray.task(config=RAY_TASK_CONFIG)
-def process_data_with_ray(data):
-    import ray
+from datetime import datetime, timedelta
+from pathlib import Path
 
-    @ray.remote
-    def hello_world():
-        return "hello world"
+from airflow.decorators import dag, task
 
-    print(hello_world())
+from ray_provider.decorators.ray import ray
+
+RAY_TASK_CONFIG = {
+    "conn_id": "ray_conn",
+    "runtime_env": {
+        "working_dir": Path(__file__).parent / "ray_scripts",
+        "pip": ["numpy"],
+    },
+    "num_cpus": 1,
+    "num_gpus": 0,
+    "memory": 0,
+    "poll_interval": 5,
+}
+
+
+@dag(
+    dag_id="Ray_Taskflow_Example",
+    start_date=datetime(2023, 1, 1),
+    schedule=timedelta(days=1),
+    catchup=False,
+    default_args={
+        "owner": "airflow",
+        "retries": 1,
+        "retry_delay": timedelta(minutes=5),
+    },
+    tags=["ray", "example"],
+)
+def ray_taskflow_dag():
+
+    @task
+    def generate_data():
+        import numpy as np
+
+        return np.random.rand(100).tolist()
+
+    @ray.task(config=RAY_TASK_CONFIG)
+    def process_data_with_ray(data):
+        import numpy as np
+        import ray
+
+        @ray.remote
+        def square(x):
+            return x**2
+
+        ray.init()
+        data = np.array(data)
+        futures = [square.remote(x) for x in data]
+        results = ray.get(futures)
+        mean = np.mean(results)
+        print(f"Mean of squared values: {mean}")
+        return mean
+
+    data = generate_data()
+    process_data_with_ray(data)
+
+
+ray_example_dag = ray_taskflow_dag()
 ```
 
-## Contact the devs
-If you have any questions, issues, or feedback regarding the astro-provider-ray package, please don't hesitate to reach out to the development team. You can contact us through the following channels:
-
-- **GitHub Issues**: For bug reports, feature requests, or general questions, please open an issue on our [GitHub repository](https://github.com/astronomer/astro-provider-ray/issues).
-- **Slack Channel**: Join Apache Airflow's [Slack](https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ). Visit `#airflow-ray` for discussions and help.
-
-We appreciate your input and are committed to improving this package to better serve the community.
-
 ## Changelog
-We follow [Semantic Versioning](https://semver.org/) for releases.
-
-Check [CHANGELOG.rst](https://github.com/astronomer/astro-provider-ray/blob/main/CHANGELOG.rst) for the latest changes.
+We follow [Semantic Versioning](https://semver.org/) for releases. Check [CHANGELOG.rst](https://github.com/astronomer/astro-provider-ray/blob/main/CHANGELOG.rst) for the latest changes.
 
 ## Contributing Guide
 All contributions, bug reports, bug fixes, documentation improvements, enhancements are welcome.
 
 A detailed overview on how to contribute can be found in the [Contributing Guide](https://github.com/astronomer/astro-provider-ray/blob/main/CONTRIBUTING.rst).
+
+## License
+[Apache 2.0 License](https://github.com/astronomer/astro-provider-ray/blob/main/LICENSE)
