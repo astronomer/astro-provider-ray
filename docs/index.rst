@@ -48,7 +48,19 @@ Triggers
 Example Usage
 -------------
 
-1. Setting up the connection
+1. Pre-requisites
+~~~~~~~~~~~~~~~~~
+
+The ``SetupRayCluster`` and the ``DeleteRayCluster`` operator require helm to install the kuberay operator. See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for more details.
+
+2. Installation
+~~~~~~~~~~~~~~~
+
+.. code-block:: sh
+
+   pip install astro-provider-ray
+
+3. Setting up the connection
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For SubmitRayJob operator (using an existing Ray cluster)
@@ -68,7 +80,7 @@ For SetupRayCluster and DeleteRayCluster operators
 - Namespace: The k8 namespace where your cluster must be created. If not provided, "default" is used
 - Optional fields: Cluster context, Disable SSL, Disable TCP keepalive
 
-2. Setting up the Ray cluster spec
+5. Setting up the Ray cluster spec
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Create a YAML file defining your Ray cluster configuration. Example:
@@ -79,7 +91,7 @@ Save this file in a location accessible to your Airflow installation, and refere
 
 **Note:** ``spec.headGroupSpec.serviceType`` must be a 'LoadBalancer' to spin a service that exposes your dashboard
 
-3. Code Samples
+5. Code Samples
 ^^^^^^^^^^^^^^^
 
 There are two main scenarios for using this provider:
