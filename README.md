@@ -9,6 +9,20 @@ Benefits of using this provider include:
 - **Dependency management**: Define and manage dependencies between Ray jobs and other tasks in DAGs.
 - **Resource allocation**: Run Ray jobs alongside other task types within a single pipeline.
 
+</div>
+
+## 📑 Resources
+
+<p align="center">
+  :building_construction: :rocket: :chart_with_upwards_trend:
+</p>
+
+<div align="center">
+
+📖 [Docs]() &nbsp; | &nbsp; ⚡ [Getting Started]() &nbsp; | &nbsp; 👋 [Slack]() &nbsp; | &nbsp; 🌟 [Contribute]() &nbsp;
+
+</div>
+
 ## Table of Contents
 - [Quickstart](#quickstart)
 - [Contact the Devs](#contact-the-devs)
@@ -17,6 +31,56 @@ Benefits of using this provider include:
 
 ## Quickstart
 Check out the Getting Started guide in our [docs](). Sample DAGs are available at `example_dags/`.
+
+## Example Usage
+
+```python
+setup_cluster = SetupRayCluster(
+    task_id="SetupRayCluster",
+    conn_id="ray_conn",
+    ray_cluster_yaml=str(RAY_SPEC),
+    use_gpu=False,
+    update_if_exists=False,
+    dag=dag,
+)
+
+submit_ray_job = SubmitRayJob(
+    task_id="SubmitRayJob",
+    conn_id="ray_conn",
+    entrypoint="python script.py",
+    runtime_env={"working_dir": str(FOLDER_PATH)},
+    num_cpus=1,
+    num_gpus=0,
+    memory=0,
+    resources={},
+    fetch_logs=True,
+    wait_for_completion=True,
+    job_timeout_seconds=600,
+    xcom_task_key="SetupRayCluster.dashboard",
+    poll_interval=5,
+    dag=dag,
+)
+
+delete_cluster = DeleteRayCluster(
+    task_id="DeleteRayCluster",
+    conn_id="ray_conn",
+    ray_cluster_yaml=str(RAY_SPEC),
+    use_gpu=False,
+    dag=dag,
+)
+```
+
+```python
+@ray.task(config=RAY_TASK_CONFIG)
+def process_data_with_ray(data):
+    import ray
+
+    @ray.remote
+    def hello_world():
+        return "hello world"
+
+    print(hello_world())
+```
 
 ## Contact the devs
 If you have any questions, issues, or feedback regarding the astro-provider-ray package, please don't hesitate to reach out to the development team. You can contact us through the following channels:
