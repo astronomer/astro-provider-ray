@@ -3,7 +3,7 @@ Contributions
 
 Hi there! We're thrilled that you'd like to contribute to this project. Your help is essential for keeping it great.
 
-Please note that this project is released with a `Contributor Code of Conduct <https://github.com/astronomer/astro-provider-ray/tree/main/docs/CODE_OF_CONDUCT>`_.
+Please note that this project is released with a `Contributor Code of Conduct <https://github.com/astronomer/astro-provider-ray/tree/main/docs/CODE_OF_CONDUCT.rst>`_.
 By participating in this project you agree to abide by its terms.
 
 Overview
