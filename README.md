@@ -16,7 +16,7 @@ Benefits of using this provider include:
 
 <div align="center">
 
-:books: [Docs]() &nbsp; | &nbsp; :rocket: [Getting Started]() &nbsp; | &nbsp; :slack: [Slack]() &nbsp; | &nbsp; :fire: [Contribute]() &nbsp;
+:books: [Docs]() &nbsp; | &nbsp; :rocket: [Getting Started]() &nbsp; | &nbsp; :slack-on-fire: [Slack]() &nbsp; | &nbsp; :fire: [Contribute]() &nbsp;
 
 </div>
 
