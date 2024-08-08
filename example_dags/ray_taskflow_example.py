@@ -19,7 +19,7 @@ RAY_TASK_CONFIG = {
 
 
 @dag(
-    dag_id="ray_taskflow_example",
+    dag_id="Ray_Taskflow_Example",
     start_date=datetime(2023, 1, 1),
     schedule=timedelta(days=1),
     catchup=False,

@@ -1,44 +1,28 @@
 astro-provider-ray
 ==================
 
-This repository provides tools for integrating `Apache Airflow® <https://airflow.apache.org/>`_ with Ray, enabling the orchestration of Ray jobs within Airflow workflows. It includes a decorator, two operators, and one trigger designed to efficiently manage and monitor Ray jobs and services.
+Orchestrate your Ray jobs using `Apache Airflow® <https://airflow.apache.org/>`_ combining Airflow's workflow management with Ray's distributed computing capabilities.
+
+Benefits of using this provider include
+
+**Integration**: Incorporate Ray jobs into Airflow DAGs for unified workflow management.
+**Distributed computing**: Use Ray's distributed capabilities within Airflow pipelines for scalable ETL, LLM fine-tuning etc.
+**Monitoring**: Track Ray job progress through Airflow's user interface.
+**Dependency management**: Define and manage dependencies between Ray jobs and other tasks in DAGs.
+**Resource allocation**: Run Ray jobs alongside other task types within a single pipeline.
+
 
 Table of Contents
 -----------------
 
-- `Components`_
 - `Quickstart`_
 - `Contact the Devs`_
 - `Changelog`_
 - `Contributing Guide`_
 
-Components
-----------
-
-Hooks
-~~~~~
-
-- **RayHook**: Sets up methods needed to run operators and decorators, working with the 'Ray' connection type to manage Ray clusters and submit jobs.
-
-Decorators
-~~~~~~~~~~
-
-- **_RayDecoratedOperator**: Simplifies integration by decorating task functions to work seamlessly with Ray.
-
-Operators
-~~~~~~~~~
-
-- **SetupRayCluster**: (Placeholder for cluster setup details)
-- **DeleteRayCluster**: (Placeholder for cluster deletion details)
-- **SubmitRayJob**: Submits jobs to a Ray cluster using a specified host name.
-
-Triggers
-~~~~~~~~
-
-- **RayJobTrigger**: Monitors asynchronous job execution submitted via ``SubmitRayJob`` or using the ``@ray.task()`` decorator.
-
 Quickstart
 ----------
+Check out the Getting Started guide in our `docs <>`_ . Sample DAGs are available at example_dags/.
 
 1. Pre-requisites
 ~~~~~~~~~~~~~~~~~
@@ -77,76 +61,75 @@ For SetupRayCluster and DeleteRayCluster operators
 
 Create a YAML file defining your Ray cluster configuration. Example:
 
-.. literalinclude:: ../example_dags/scripts/ray.yaml
-   :language: yaml
-   :caption: ray.yaml
-   :linenos:
+..
+  https://github.com/astronomer/astro-provider-ray/blob/59868d30e866cfad19e35450d9e795f8271e9b21/example_dags/scripts/ray.yaml
+..
 
 .. code-block:: yaml
 
-   # ray.yaml
-   apiVersion: ray.io/v1
-   kind: RayCluster
-   metadata:
-     name: raycluster-complete
-   spec:
-     rayVersion: "2.10.0"
-     enableInTreeAutoscaling: true
-     headGroupSpec:
-       serviceType: LoadBalancer
-       rayStartParams:
-         dashboard-host: "0.0.0.0"
-         block: "true"
-       template:
-         metadata:
-           labels:
-             ray-node-type: head
-         spec:
-           containers:
-           - name: ray-head
-             image: rayproject/ray-ml:latest
-             resources:
-               limits:
-                 cpu: 4
-                 memory: 8Gi
-               requests:
-                 cpu: 4
-                 memory: 8Gi
-             lifecycle:
-               preStop:
-                 exec:
-                   command: ["/bin/sh","-c","ray stop"]
-             ports:
-             - containerPort: 6379
-               name: gcs
-             - containerPort: 8265
-               name: dashboard
-             - containerPort: 10001
-               name: client
-             - containerPort: 8000
-               name: serve
-             - containerPort: 8080
-               name: metrics
-     workerGroupSpecs:
-     - groupName: small-group
-       replicas: 2
-       minReplicas: 2
-       maxReplicas: 5
-       rayStartParams:
-         block: "true"
-       template:
-         metadata:
-         spec:
-           containers:
-           - name: machine-learning
-             image: rayproject/ray-ml:latest
-             resources:
-               limits:
-                 cpu: 2
-                 memory: 4Gi
-               requests:
-                 cpu: 2
-                 memory: 4Gi
+  apiVersion: ray.io/v1
+  kind: RayCluster
+  metadata:
+    name: raycluster-complete
+  spec:
+    rayVersion: "2.10.0"
+    enableInTreeAutoscaling: true
+    headGroupSpec:
+      serviceType: LoadBalancer
+      rayStartParams:
+        dashboard-host: "0.0.0.0"
+        block: "true"
+      template:
+        metadata:
+          labels:
+            ray-node-type: head
+        spec:
+          containers:
+          - name: ray-head
+            image: rayproject/ray-ml:latest
+            resources:
+              limits:
+                cpu: 1
+                memory: 3Gi
+              requests:
+                cpu: 1
+                memory: 3Gi
+            lifecycle:
+              preStop:
+                exec:
+                  command: ["/bin/sh","-c","ray stop"]
+            ports:
+            - containerPort: 6379
+              name: gcs
+            - containerPort: 8265
+              name: dashboard
+            - containerPort: 10001
+              name: client
+            - containerPort: 8000
+              name: serve
+            - containerPort: 8080
+              name: metrics
+    workerGroupSpecs:
+    - groupName: small-group
+      replicas: 1
+      minReplicas: 1
+      maxReplicas: 2
+      rayStartParams:
+        block: "true"
+      template:
+        metadata:
+        spec:
+          containers:
+          - name: machine-learning
+            image: rayproject/ray-ml:latest
+            resources:
+              limits:
+                cpu: 1
+                memory: 1Gi
+              requests:
+                cpu: 1
+                memory: 1Gi
+
 
 Save this file in a location accessible to your Airflow installation, and reference it in your DAG code.
 
