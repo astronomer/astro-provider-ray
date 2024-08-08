@@ -1,4 +1,9 @@
-# astro-provider-ray
+<h1 align="center">
+  Ray provider
+</h1>
+
+![CI](https://github.com/astronomer/astro-provider-ray/actions/workflows/python_ci.yaml/badge.svg)
+![Release Tests](https://github.com/astronomer/astro-provider-ray/actions/workflows/release_tests.yaml/badge.svg)
 
 Orchestrate your Ray jobs using [Apache Airflow®](https://airflow.apache.org/) combining Airflow's workflow management with Ray's distributed computing capabilities.
 
@@ -16,7 +21,7 @@ Benefits of using this provider include:
 
 <div align="center">
 
-:books: [Docs]() &nbsp; | &nbsp; :rocket: [Getting Started]() &nbsp; | &nbsp; :speech_balloon: [Slack]() &nbsp; | &nbsp; :fire: [Contribute]() &nbsp;
+:books: [Docs]() &nbsp; | &nbsp; :rocket: [Getting Started]() &nbsp; | &nbsp; :speech_balloon: [Slack](https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ) &nbsp; | &nbsp; :fire: [Contribute]() &nbsp;
 
 </div>
 
