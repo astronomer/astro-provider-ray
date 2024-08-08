@@ -13,13 +13,10 @@ Benefits of using this provider include:
 
 ## 📑 Resources
 
-<p align="center">
-  :building_construction: :rocket: :chart_with_upwards_trend:
-</p>
 
 <div align="center">
 
-📖 [Docs]() &nbsp; | &nbsp; ⚡ [Getting Started]() &nbsp; | &nbsp; 👋 [Slack]() &nbsp; | &nbsp; 🌟 [Contribute]() &nbsp;
+:books: [Docs]() &nbsp; | &nbsp; :rocket: [Getting Started]() &nbsp; | &nbsp; :slack: [Slack]() &nbsp; | &nbsp; :fire: [Contribute]() &nbsp;
 
 </div>
 
