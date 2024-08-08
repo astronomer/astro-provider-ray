@@ -2,11 +2,7 @@
   Ray provider
 </h1>
 
-<div align="center">
 
-:books: [Docs]() &nbsp; | &nbsp; :rocket: [Getting Started]() &nbsp; | &nbsp; :speech_balloon: [Slack](https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ) &nbsp; | &nbsp; :fire: [Contribute]() &nbsp;
-
-</div>
 
 Orchestrate your Ray jobs using [Apache Airflow®](https://airflow.apache.org/) combining Airflow's workflow management with Ray's distributed computing capabilities.
 
@@ -18,6 +14,11 @@ Benefits of using this provider include:
 - **Resource allocation**: Run Ray jobs alongside other task types within a single pipeline.
 
 
+<div align="center">
+
+:books: [Docs]() &nbsp; | &nbsp; :rocket: [Getting Started]() &nbsp; | &nbsp; :speech_balloon: [Slack](https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ) &nbsp; | &nbsp; :fire: [Contribute]() &nbsp;
+
+</div>
 
 
 ## Table of Contents
