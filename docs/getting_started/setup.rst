@@ -13,6 +13,8 @@ The ``SetupRayCluster`` and the ``DeleteRayCluster`` operator require helm to in
 
    pip install astro-provider-ray
 
+The astro-provider-ray source code is available on this GitHub `page <https://github.com/astronomer/astro-provider-ray>`_
+
 3. Setting up the connection
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
