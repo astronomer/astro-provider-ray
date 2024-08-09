@@ -66,6 +66,13 @@ repos:
       - id: blacken-docs
         alias: black
         additional_dependencies: [black>=22.10.0]
+
+  - repo: https://github.com/tcort/markdown-link-check
+    rev: v3.12.2
+    hooks:
+      - id: markdown-link-check
+        args: ["--config=mlc-config.json"]
+
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: "v1.10.0"
 

@@ -165,7 +165,7 @@ We follow [Semantic Versioning](https://semver.org/) for releases. Check [CHANGE
 ## Contributing Guide
 All contributions, bug reports, bug fixes, documentation improvements, enhancements are welcome.
 
-A detailed overview on how to contribute can be found in the [Contributing Guide](https://github.com/astronomer/astro-provider-ray/blob/main/CONTRIBUTING.rst).
+A detailed overview on how to contribute can be found in the [Contributing Guide](https://github.com/astronomer/astro-provider-ray/blob/main/docs/CONTRIBUTING.rst).
 
 ## License
 [Apache 2.0 License](https://github.com/astronomer/astro-provider-ray/blob/main/LICENSE)

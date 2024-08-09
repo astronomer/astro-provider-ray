@@ -125,4 +125,4 @@ All contributions, bug reports, bug fixes, documentation improvements, enhanceme
 
 A detailed overview an how to contribute can be found in the `Contributing Guide`_
 
-.. _Contributing Guide: https://github.com/astronomer/astro-provider-ray/blob/main/CONTRIBUTING.rst
+.. _Contributing Guide: https://github.com/astronomer/astro-provider-ray/blob/main/docs/CONTRIBUTING.rst
