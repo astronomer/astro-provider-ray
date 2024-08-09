@@ -7,7 +7,7 @@ hooks:
   - module: ray_provider.hooks.ray.RayHook
 
 decorators:
-  - module: ray_provider.decorators.ray.ray_task
+  - module: ray_provider.decorators.ray.ray
 
 operators:
   - module: ray_provider.operators.ray.SetupRayCluster

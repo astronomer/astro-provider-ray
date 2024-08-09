@@ -28,10 +28,6 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
     custom_operator_name = "@task.ray"
 
     template_fields: Any = (*DecoratedOperator.template_fields, *SubmitRayJob.template_fields)
-    template_fields_renderers: dict[str, str] = {
-        **DecoratedOperator.template_fields_renderers,
-        **SubmitRayJob.template_fields_renderers,
-    }
 
     def __init__(self, config: dict[str, Any], **kwargs: Any) -> None:
         self.conn_id: str = config.get("conn_id", "")
