@@ -16,7 +16,7 @@ To contribute to the **Ray provider** project:
 #. Please create a `GitHub Issue <https://github.com/astronomer/astro-provider-ray/issues>`_ describing your contribution.
 #. Open a feature branch off of the ``main`` branch and create a Pull Request into the ``main`` branch from your feature branch.
 #. Link your issue to the pull request.
-#. Once developments are complete on your feature branch, request a review and it will be merged once approved.
+#. Once development is complete on your feature branch, request a review and it will be merged once approved.
 
 Test Changes Locally
 --------------------

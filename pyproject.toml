@@ -102,6 +102,7 @@ dependencies = [
     "sphinx",
     "sphinx-autoapi",
     "sphinx-autobuild",
+    "furo",
 ]
 
 [tool.hatch.envs.docs.scripts]
