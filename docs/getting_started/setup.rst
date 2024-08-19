@@ -23,6 +23,9 @@ See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for other 
 
 **3. Setting up the connection**
 
+.. image:: ../_static/connection.png
+   :align: center
+
 - For SubmitRayJob operator (using an existing Ray cluster)
 
    - **Connection Type**: "Ray"
