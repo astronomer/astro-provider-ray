@@ -1,47 +1,42 @@
-Getting started
-~~~~~~~~~~~~~~~
+Getting Started
+===============
 
-1. Pre-requisites
-^^^^^^^^^^^^^^^^^
+**1. Install Helm:**
 
-The ``SetupRayCluster`` and the ``DeleteRayCluster`` operator require helm to install the kuberay operator. See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for more details.
+.. code-block:: sh
 
-2. Installation
-^^^^^^^^^^^^^^^
+   curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+   chmod 700 get_helm.sh
+   ./get_helm.sh
+
+See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for other options.
+
+.. note::
+   This step is only required if you intend to use the ``SetupRayCluster`` & ``DeleteRayCluster`` operators.
+
+**2. Install the python package:**
 
 .. code-block:: sh
 
    pip install astro-provider-ray
 
-The astro-provider-ray source code is available on this GitHub `page <https://github.com/astronomer/astro-provider-ray>`_
 
-3. Setting up the connection
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+**3. Setting up the connection**
 
-For SubmitRayJob operator (using an existing Ray cluster)
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+.. image:: ../_static/connection.png
+   :align: center
 
-- **Connection Type**: "Ray"
-- **Connection ID**: e.g., "ray_conn"
-- **Ray dashboard URL**: URL of the Ray dashboard
-- **Optional fields**: Cookies, Metadata, Headers, Verify SSL
+- For SubmitRayJob operator (using an existing Ray cluster)
 
-For SetupRayCluster and DeleteRayCluster operators
-""""""""""""""""""""""""""""""""""""""""""""""""""
+   - **Connection Type**: "Ray"
+   - **Connection ID**: e.g., "ray_conn"
+   - **Ray dashboard URL**: URL of the Ray dashboard
+   - **Optional fields**: Cookies, Metadata, Headers, Verify SSL
 
-- **Connection Type**: "Ray"
-- **Connection ID**: e.g., "ray_k8s_conn"
-- **Kube config path** OR **Kube config content (JSON format)** : Kubeconfig of the kubernetes cluster where Ray cluster must be setup
-- **Namespace**: The k8 namespace where your cluster must be created. If not provided, "default" is used
-- **Optional fields**: Cluster context, Disable SSL, Disable TCP keepalive
+- For SetupRayCluster and DeleteRayCluster operators
 
-5. Setting up the Ray cluster spec
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Create a YAML file defining your Ray cluster configuration. Example:
-
-**Note:** ``spec.headGroupSpec.serviceType`` must be a 'LoadBalancer' to spin a service that exposes your dashboard externally
-
-.. literalinclude:: ../../example_dags/scripts/ray.yaml
-
-Save this file in a location accessible to your Airflow installation, and reference it in your DAG code.
+   - **Connection Type**: "Ray"
+   - **Connection ID**: e.g., "ray_k8s_conn"
+   - **Kube config path** OR **Kube config content (JSON format)**: Kubeconfig of the Kubernetes cluster where Ray cluster must be set up
+   - **Namespace**: The K8s namespace where your cluster must be created. If not provided, "default" is used
+   - **Optional fields**: Cluster context, Disable SSL, Disable TCP keepalive

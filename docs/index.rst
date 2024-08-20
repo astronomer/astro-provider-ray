@@ -1,5 +1,5 @@
-Welcome to astro-provider-ray documentation!
-===================================================
+Welcome to Ray provider documentation!
+======================================
 
 .. toctree::
    :hidden:
@@ -27,11 +27,17 @@ Benefits of using this provider include:
 Table of Contents
 -----------------
 
+- `Quickstart`_
 - `What is the Ray provider?`_
 - `Components`_
 - `Contact the Devs`_
 - `Changelog`_
 - `Contributing Guide`_
+
+Quickstart
+----------
+
+See the :doc:`Getting Started <getting_started/setup>` page for detailed instructions on how to begin using the provider.
 
 What is the Ray provider?
 -------------------------
@@ -55,7 +61,7 @@ The architecture diagram above shows how we can deploy both Airflow & Ray on a K
 
 
 Use Cases
-^^^^^^^^
+^^^^^^^^^
 - **Scalable ETL**: Orchestrate and monitor Ray jobs on on-demand compute clusters using the Ray Data library. These operations could be custom Python code or ML model inference.
 - **Model Training**: Schedule model training or fine-tuning jobs on flexible cadences (daily/weekly/monthly). Benefits include:
 
@@ -88,12 +94,12 @@ Decorators
 Operators
 ^^^^^^^^^
 - **SetupRayCluster**: Sets up or Updates a ray cluster on kubernetes using a kubeconfig input provided through the Ray connection
-- **DeleteRayCluster**: Deletes and existing Ray cluster on kubernetes using the same Ray connection
+- **DeleteRayCluster**: Deletes an existing Ray cluster on kubernetes using the same Ray connection
 - **SubmitRayJob**: Submits jobs to a Ray cluster using a specified host name and monitors its execution
 
 Triggers
 ^^^^^^^^
-- **RayJobTrigger**: Monitors asynchronous job execution submitted via ``SubmitRayJob`` or using the ``@task.ray()`` decorator and prints real-time logs to the the Airflow UI
+- **RayJobTrigger**: Monitors asynchronous job execution submitted via the ``SubmitRayJob`` operator or using the ``@ray.task()`` decorator and prints real-time logs to the the Airflow UI
 
 
 Contact the devs
