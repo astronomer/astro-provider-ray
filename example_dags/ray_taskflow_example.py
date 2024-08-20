@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from airflow.decorators import dag, task
@@ -21,13 +21,8 @@ RAY_TASK_CONFIG = {
 @dag(
     dag_id="Ray_Taskflow_Example",
     start_date=datetime(2023, 1, 1),
-    schedule=timedelta(days=1),
+    schedule=None,
     catchup=False,
-    default_args={
-        "owner": "airflow",
-        "retries": 1,
-        "retry_delay": timedelta(minutes=5),
-    },
     tags=["ray", "example"],
 )
 def ray_taskflow_dag():
