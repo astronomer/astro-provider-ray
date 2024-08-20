@@ -59,6 +59,7 @@ docs = [
     "pydata-sphinx-theme",
     "sphinx-autobuild",
     "sphinx-autoapi",
+    "furo"
 ]
 
 ######################################
