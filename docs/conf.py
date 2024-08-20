@@ -30,6 +30,6 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/tests/*"]
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "furo"
-html_title = "Package documentation"
+html_title = "Ray provider documentation"
 
 html_last_updated_fmt = "%b %d, %Y"
