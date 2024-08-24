@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from airflow import DAG
 
@@ -12,8 +13,9 @@ default_args = {
 }
 
 CONN_ID = "ray_conn"
-RAY_SPEC = "/usr/local/airflow/dags/scripts/ray.yaml"
-RAY_RUNTIME_ENV = {"working_dir": "/usr/local/airflow/dags/ray_scripts"}
+RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
+FOLDER_PATH = Path(__file__).parent / "ray_scripts"
+RAY_RUNTIME_ENV = {"working_dir": str(FOLDER_PATH)}
 
 dag = DAG(
     "Single_Operator",
