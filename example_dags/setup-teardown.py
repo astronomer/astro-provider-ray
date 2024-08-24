@@ -12,7 +12,7 @@ default_args = {
     "retry_delay": timedelta(minutes=0),
 }
 
-
+CONN_ID = "ray_conn"
 RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
 FOLDER_PATH = Path(__file__).parent / "ray_scripts"
 
@@ -25,16 +25,15 @@ dag = DAG(
 
 setup_cluster = SetupRayCluster(
     task_id="SetupRayCluster",
-    conn_id="ray_conn",
+    conn_id=CONN_ID,
     ray_cluster_yaml=str(RAY_SPEC),
-    use_gpu=False,
     update_if_exists=False,
     dag=dag,
 )
 
 submit_ray_job = SubmitRayJob(
     task_id="SubmitRayJob",
-    conn_id="ray_conn",
+    conn_id=CONN_ID,
     entrypoint="python script.py",
     runtime_env={"working_dir": str(FOLDER_PATH)},
     num_cpus=1,
@@ -51,9 +50,8 @@ submit_ray_job = SubmitRayJob(
 
 delete_cluster = DeleteRayCluster(
     task_id="DeleteRayCluster",
-    conn_id="ray_conn",
+    conn_id=CONN_ID,
     ray_cluster_yaml=str(RAY_SPEC),
-    use_gpu=False,
     dag=dag,
 )
 

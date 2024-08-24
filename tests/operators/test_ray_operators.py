@@ -104,7 +104,9 @@ class TestDeleteRayCluster:
     def test_execute(self, operator, mock_hook):
         context = MagicMock()
         operator.execute(context)
-        mock_hook.delete_ray_cluster.assert_called_once_with(operator.ray_cluster_yaml, operator.gpu_device_plugin_yaml)
+        mock_hook.delete_ray_cluster.assert_called_once_with(
+            context, operator.ray_cluster_yaml, operator.gpu_device_plugin_yaml
+        )
 
 
 class TestSubmitRayJob:
@@ -172,12 +174,13 @@ class TestSubmitRayJob:
 
         assert result == "test_job_id"
         mock_hook.submit_ray_job.assert_called_once_with(
+            dashboard_url=None,
             entrypoint="python script.py",
             runtime_env={},
             entrypoint_num_cpus=0,
             entrypoint_num_gpus=0,
             entrypoint_memory=0,
-            entrypoint_resources=None,
+            entrypoint_resources={},
         )
 
     def test_execute_with_xcom(self, mock_hook, context, task_instance):
@@ -262,4 +265,6 @@ class TestSubmitRayJob:
             "num_gpus",
             "memory",
             "xcom_task_key",
+            "ray_cluster_yaml",
+            "job_timeout_seconds",
         )

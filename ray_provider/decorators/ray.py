@@ -37,7 +37,6 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         self.entrypoint: str = config.get("entrypoint", "python script.py")
         self.runtime_env: dict[str, Any] = config.get("runtime_env", {})
 
-        self.dashboard_url: str | None = config.get("dashboard_url", None)
         self.num_cpus: int | float = config.get("num_cpus", 1)
         self.num_gpus: int | float = config.get("num_gpus", 0)
         self.memory: int | float = config.get("memory", None)
@@ -57,7 +56,6 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
         super().__init__(
             conn_id=self.conn_id,
-            dashboard_url=self.dashboard_url,
             entrypoint=self.entrypoint,
             runtime_env=self.runtime_env,
             num_cpus=self.num_cpus,

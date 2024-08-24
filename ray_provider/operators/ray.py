@@ -84,7 +84,7 @@ class DeleteRayCluster(BaseOperator):
         return RayHook(conn_id=self.conn_id)
 
     def execute(self, context: Context) -> None:
-        self.hook.delete_ray_cluster(self.ray_cluster_yaml, self.gpu_device_plugin_yaml)
+        self.hook.delete_ray_cluster(context, self.ray_cluster_yaml, self.gpu_device_plugin_yaml)
 
 
 class SubmitRayJob(BaseOperator):
@@ -129,7 +129,6 @@ class SubmitRayJob(BaseOperator):
         self,
         *,
         conn_id: str,
-        dashboard_url: str | None = None,
         entrypoint: str,
         runtime_env: dict[str, Any],
         num_cpus: float = 0,
@@ -164,24 +163,9 @@ class SubmitRayJob(BaseOperator):
         self.job_timeout_seconds = job_timeout_seconds
         self.poll_interval = poll_interval
         self.xcom_task_key = xcom_task_key
-        self.dashboard_url = dashboard_url
+        self.dashboard_url = None
         self.job_id = ""
         self.terminal_states = {JobStatus.SUCCEEDED, JobStatus.STOPPED, JobStatus.FAILED}
-
-        if self.ray_cluster_yaml:
-            self._pre_execute_hook = lambda context: self.hook.setup_ray_cluster(
-                context=context,
-                ray_cluster_yaml=self.ray_cluster_yaml,
-                kuberay_version=self.kuberay_version,
-                gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
-                update_if_exists=self.update_if_exists,
-            )
-            self._post_execute_hook = lambda context, result: self.hook.delete_ray_cluster(
-                context=context,
-                result=result,
-                ray_cluster_yaml=self.ray_cluster_yaml,
-                gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
-            )
 
     def on_kill(self) -> None:
         """
@@ -199,23 +183,13 @@ class SubmitRayJob(BaseOperator):
         """Lazily initialize and return the RayHook."""
         return RayHook(conn_id=self.conn_id)
 
-    def _delete_ray_cluster(self, context: Context, result: Any) -> None:
-        """
-        Delete the Ray cluster after job completion.
-
-        :param context: The context in which the task is being executed.
-        :param result: The result of the task execution.
-        """
-
     def _get_dashboard_url(self, context: Context) -> str | None:
         """
-        Retrieve the Ray dashboard URL from XCom if not provided directly.
+        Retrieve the Ray dashboard URL from XCom.
 
         :param context: The context in which the task is being executed.
         :return: The Ray dashboard URL if available, None otherwise.
         """
-        if self.dashboard_url is not None:
-            return self.dashboard_url
 
         if self.xcom_task_key:
             parts = self.xcom_task_key.split(".", 1)
@@ -244,6 +218,20 @@ class SubmitRayJob(BaseOperator):
         :return: The job ID of the submitted Ray job.
         :raises AirflowException: If the job fails, is cancelled, or reaches an unexpected state.
         """
+
+        # Setup the cluster
+        try:
+            if self.ray_cluster_yaml:
+                self.hook.setup_ray_cluster(
+                    context=context,
+                    ray_cluster_yaml=self.ray_cluster_yaml,
+                    kuberay_version=self.kuberay_version,
+                    gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
+                    update_if_exists=self.update_if_exists,
+                )
+        except Exception as e:
+            raise e
+
         self.dashboard_url = self._get_dashboard_url(context)
 
         self.job_id = self.hook.submit_ray_job(
@@ -303,3 +291,14 @@ class SubmitRayJob(BaseOperator):
             self.log.info(f"Ray job {self.job_id} execution succeeded.")
         else:
             raise AirflowException(f"Unexpected event status for job {self.job_id}: {event['status']}")
+
+        # Teardown the cluster
+        try:
+            if self.ray_cluster_yaml:
+                self.hook.delete_ray_cluster(
+                    context=context,
+                    ray_cluster_yaml=self.ray_cluster_yaml,
+                    gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
+                )
+        except Exception as e:
+            raise e
