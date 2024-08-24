@@ -64,7 +64,7 @@ class RayJobTrigger(BaseTrigger):
 
         :return: An instance of RayHook configured with the connection ID and dashboard URL.
         """
-        return RayHook(conn_id=self.conn_id, xcom_dashboard_url=self.dashboard_url)
+        return RayHook(conn_id=self.conn_id)
 
     async def _poll_status(self) -> None:
         while not self._is_terminal_state():
@@ -75,7 +75,7 @@ class RayJobTrigger(BaseTrigger):
         Streams logs from the Ray job in real-time.
         """
         self.log.info(f"::group::{self.job_id} logs")
-        async for log_lines in self.hook.get_ray_tail_logs(self.job_id):
+        async for log_lines in self.hook.get_ray_tail_logs(self.dashboard_url, self.job_id):
             for line in log_lines.split("\n"):
                 if line.strip():  # Avoid logging empty lines
                     self.log.info(line.strip())
@@ -99,7 +99,7 @@ class RayJobTrigger(BaseTrigger):
 
             await asyncio.gather(*tasks)
 
-            completed_status = self.hook.get_ray_job_status(self.job_id)
+            completed_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
             self.log.info(f"Status of completed job {self.job_id} is: {completed_status}")
             yield TriggerEvent(
                 {
@@ -119,4 +119,8 @@ class RayJobTrigger(BaseTrigger):
 
         :return: True if the job is in a terminal state, False otherwise.
         """
-        return self.hook.get_ray_job_status(self.job_id) in (JobStatus.SUCCEEDED, JobStatus.STOPPED, JobStatus.FAILED)
+        return self.hook.get_ray_job_status(self.dashboard_url, self.job_id) in (
+            JobStatus.SUCCEEDED,
+            JobStatus.STOPPED,
+            JobStatus.FAILED,
+        )

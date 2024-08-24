@@ -32,14 +32,13 @@ class TestRayHook:
         mock_kubernetes_init.return_value = None
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
 
-        hook = RayHook(conn_id="test_conn", xcom_dashboard_url="http://test-url")
+        hook = RayHook(conn_id="test_conn")
 
         # Assert that the parent class's __init__ was called with the correct arguments
         mock_kubernetes_init.assert_called_once_with(conn_id="test_conn")
 
         # Assert that the RayHook attributes are set correctly
         assert hook.conn_id == "test_conn"
-        assert hook.xcom_dashboard_url == "http://test-url"
 
     def test_get_ui_field_behaviour(self):
         expected_fields = {

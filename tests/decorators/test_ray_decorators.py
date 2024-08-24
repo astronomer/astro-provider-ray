@@ -1,19 +1,13 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from airflow.decorators.base import _TaskDecorator
 from airflow.exceptions import AirflowException
 from airflow.utils.context import Context
 
 from ray_provider.decorators.ray import _RayDecoratedOperator, ray
-from ray_provider.operators.ray import SubmitRayJob
-
-DEFAULT_DATE = "2023-01-01"
 
 
 class TestRayDecoratedOperator:
-    default_date = DEFAULT_DATE
-
     def test_initialization(self):
         config = {
             "conn_id": "ray_default",
@@ -62,7 +56,7 @@ class TestRayDecoratedOperator:
         assert operator.num_cpus == 1
         assert operator.num_gpus == 0
         assert operator.memory is None
-        assert operator.resources is None
+        assert operator.ray_resources == {}  # Changed from None to {}
         assert operator.fetch_logs == True
         assert operator.wait_for_completion == True
         assert operator.job_timeout_seconds == 600
@@ -85,9 +79,9 @@ class TestRayDecoratedOperator:
         with pytest.raises(TypeError):
             _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
 
-    @patch.object(_RayDecoratedOperator, "get_python_source")
-    @patch.object(SubmitRayJob, "execute")
-    def test_execute_decorated_function(self, mock_super_execute, mock_get_python_source):
+    @patch.object(_RayDecoratedOperator, "_extract_function_body")
+    @patch("ray_provider.decorators.ray.SubmitRayJob.execute")
+    def test_execute_decorated_function(self, mock_super_execute, mock_extract_function_body):
         config = {
             "runtime_env": {"pip": ["ray"]},
         }
@@ -97,7 +91,7 @@ class TestRayDecoratedOperator:
 
         context = MagicMock(spec=Context)
         operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
-        mock_get_python_source.return_value = "def dummy_callable():\n    pass\n"
+        mock_extract_function_body.return_value = "def dummy_callable():\n    pass\n"
         mock_super_execute.return_value = "success"
 
         result = operator.execute(context)
@@ -106,7 +100,7 @@ class TestRayDecoratedOperator:
         assert operator.entrypoint == "python script.py"
         assert "working_dir" in operator.runtime_env
 
-    @patch.object(SubmitRayJob, "execute")
+    @patch("ray_provider.decorators.ray.SubmitRayJob.execute")
     def test_execute_with_entrypoint(self, mock_super_execute):
         config = {
             "entrypoint": "python my_script.py",
@@ -124,7 +118,7 @@ class TestRayDecoratedOperator:
         assert result == "success"
         assert operator.entrypoint == "python my_script.py"
 
-    @patch.object(SubmitRayJob, "execute")
+    @patch("ray_provider.decorators.ray.SubmitRayJob.execute")
     def test_execute_failure(self, mock_super_execute):
         config = {}
 
@@ -138,33 +132,27 @@ class TestRayDecoratedOperator:
         with pytest.raises(AirflowException):
             operator.execute(context)
 
-    def test_build_args_str(self):
+    def test_extract_function_body(self):
         config = {}
 
-        def dummy_callable(arg1, arg2, kwarg1="default"):
-            pass
-
-        operator = _RayDecoratedOperator(
-            task_id="test_task",
-            config=config,
-            python_callable=dummy_callable,
-            op_args=["value1", "value2"],
-            op_kwargs={"kwarg1": "custom"},
-        )
-
-        args_str = operator._build_args_str()
-        assert args_str == "'value1', 'value2', kwarg1='custom'"
-
-    def test_extract_function_name(self):
-        config = {}
-
+        @ray.task()
         def dummy_callable():
-            pass
+            return "dummy"
 
         operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
 
-        function_name = operator._extract_function_name()
-        assert function_name == "dummy_callable"
+        function_body = operator._extract_function_body(
+            """@ray.task()
+        def dummy_callable():
+            return "dummy"
+        """
+        )
+        assert (
+            function_body
+            == """def dummy_callable():
+    return "dummy"
+"""
+        )
 
 
 class TestRayTaskDecorator:
@@ -173,14 +161,18 @@ class TestRayTaskDecorator:
         def dummy_function():
             return "dummy"
 
-        assert isinstance(dummy_function, _TaskDecorator)
+        assert callable(dummy_function)
+        assert hasattr(dummy_function, "operator_class")
+        assert dummy_function.operator_class == _RayDecoratedOperator
 
     def test_ray_task_decorator_with_multiple_outputs(self):
         @ray.task(multiple_outputs=True)
         def dummy_function():
             return {"key": "value"}
 
-        assert isinstance(dummy_function, _TaskDecorator)
+        assert callable(dummy_function)
+        assert hasattr(dummy_function, "operator_class")
+        assert dummy_function.operator_class == _RayDecoratedOperator
 
     def test_ray_task_decorator_with_config(self):
         config = {
@@ -193,6 +185,6 @@ class TestRayTaskDecorator:
         def dummy_function():
             return "dummy"
 
-        assert isinstance(dummy_function, _TaskDecorator)
-        # We can't directly access the config here, but we can check if the decorator was applied
+        assert callable(dummy_function)
+        assert hasattr(dummy_function, "operator_class")
         assert dummy_function.operator_class == _RayDecoratedOperator

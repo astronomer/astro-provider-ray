@@ -5,13 +5,13 @@ import socket
 import subprocess
 import tempfile
 import time
-from functools import cached_property
 from typing import Any, AsyncIterator
 
 import requests
 import yaml
 from airflow.exceptions import AirflowException
 from airflow.providers.cncf.kubernetes.hooks.kubernetes import KubernetesHook
+from airflow.utils.context import Context
 from kubernetes import client, config
 from ray.job_submission import JobStatus, JobSubmissionClient
 
@@ -72,13 +72,11 @@ class RayHook(KubernetesHook):  # type: ignore
     def __init__(
         self,
         conn_id: str = default_conn_name,
-        xcom_dashboard_url: str | None = None,
     ) -> None:
         super().__init__(conn_id=conn_id)
         self.conn_id = conn_id
-        self.xcom_dashboard_url = xcom_dashboard_url
 
-        self.address = self._get_field("address") or self.xcom_dashboard_url or os.getenv("RAY_ADDRESS")
+        self.address = self._get_field("address") or os.getenv("RAY_ADDRESS")
         self.log.info(f"Ray cluster address is: {self.address}")
         self.create_cluster_if_needed = self._get_field("create_cluster_if_needed") or False
         self.cookies = self._get_field("cookies")
@@ -127,8 +125,7 @@ class RayHook(KubernetesHook):  # type: ignore
                 self.kubeconfig = temp_config.name
                 config.load_kube_config(config_file=self.kubeconfig, context=cluster_context)
 
-    @cached_property
-    def ray_client(self) -> JobSubmissionClient:
+    def ray_client(self, dashboard_url: str | None = None) -> JobSubmissionClient:
         """
         Establishes a connection to the Ray Job Submission Client.
 
@@ -137,8 +134,10 @@ class RayHook(KubernetesHook):  # type: ignore
         """
         if not self.ray_client_instance:
             try:
+                self.log.info(f"Address URL is: {self.address}")
+                self.log.info(f"Dashboard URL is: {dashboard_url}")
                 self.ray_client_instance = JobSubmissionClient(
-                    address=self.address,
+                    address=dashboard_url or self.address,
                     create_cluster_if_needed=self.create_cluster_if_needed,
                     cookies=self.cookies,
                     metadata=self.metadata,
@@ -149,7 +148,9 @@ class RayHook(KubernetesHook):  # type: ignore
                 raise AirflowException(f"Failed to create Ray JobSubmissionClient: {e}")
         return self.ray_client_instance
 
-    def submit_ray_job(self, entrypoint: str, runtime_env: dict[str, Any] | None = None, **job_config: Any) -> str:
+    def submit_ray_job(
+        self, dashboard_url: str, entrypoint: str, runtime_env: dict[str, Any] | None = None, **job_config: Any
+    ) -> str:
         """
         Submits a job to the Ray cluster.
 
@@ -158,7 +159,7 @@ class RayHook(KubernetesHook):  # type: ignore
         :param job_config: Additional job configuration parameters.
         :return: Job ID of the submitted job.
         """
-        client = self.ray_client
+        client = self.ray_client(dashboard_url=dashboard_url)
         job_id = client.submit_job(entrypoint=entrypoint, runtime_env=runtime_env, **job_config)
         self.log.info(f"Submitted job with ID: {job_id}")
         return str(job_id)
@@ -174,14 +175,14 @@ class RayHook(KubernetesHook):  # type: ignore
         self.log.info(f"Deleting job with ID: {job_id}")
         return client.delete_job(job_id=job_id)
 
-    def get_ray_job_status(self, job_id: str) -> JobStatus:
+    def get_ray_job_status(self, dashboard_url: str | None, job_id: str) -> JobStatus:
         """
         Gets the status of a submitted job.
 
         :param job_id: The ID of the job.
         :return: Status of the job.
         """
-        client = self.ray_client
+        client = self.ray_client(dashboard_url=dashboard_url)
         status = client.get_job_status(job_id=job_id)
         self.log.info(f"Job {job_id} status: {status}")
         return status
@@ -197,14 +198,14 @@ class RayHook(KubernetesHook):  # type: ignore
         logs = client.get_job_logs(job_id=job_id)
         return str(logs)
 
-    async def get_ray_tail_logs(self, job_id: str) -> AsyncIterator[str]:
+    async def get_ray_tail_logs(self, dashboard_url: str | None, job_id: str) -> AsyncIterator[str]:
         """
         Tails the logs of a submitted job asynchronously.
 
         :param job_id: The ID of the job.
         :return: An async iterator of log lines.
         """
-        client = self.ray_client
+        client = self.ray_client(dashboard_url=dashboard_url)
         async for lines in client.tail_job_logs(job_id):
             yield lines
 
@@ -289,7 +290,7 @@ class RayHook(KubernetesHook):  # type: ignore
 
         return None
 
-    def wait_for_load_balancer(
+    def _wait_for_load_balancer(
         self,
         service_name: str,
         namespace: str = "default",
@@ -332,6 +333,159 @@ class RayHook(KubernetesHook):  # type: ignore
             time.sleep(retry_interval)
 
         raise AirflowException(f"LoadBalancer did not become ready after {max_retries} attempts")
+
+    def _validate_yaml_file(self, yaml_file: str) -> None:
+        """Validate the existence and format of the YAML file."""
+        if not os.path.isfile(yaml_file):
+            raise AirflowException(f"The specified YAML file does not exist: {yaml_file}")
+        if not yaml_file.endswith((".yaml", ".yml")):
+            raise AirflowException("The specified YAML file must have a .yaml or .yml extension.")
+
+        try:
+            with open(yaml_file) as stream:
+                yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            raise AirflowException(f"The specified YAML file is not valid YAML: {exc}")
+
+    def _create_or_update_cluster(
+        self,
+        update_if_exists: bool,
+        group: str,
+        version: str,
+        plural: str,
+        name: str,
+        namespace: str,
+        cluster_spec: dict[str, Any],
+    ) -> None:
+        """Create or update the Ray cluster based on the cluster specification."""
+        try:
+            self.get_custom_object(group=group, version=version, plural=plural, name=name, namespace=namespace)
+            if update_if_exists:
+                self.log.info(f"Updating existing Ray cluster: {name}")
+                self.custom_object_client.patch_namespaced_custom_object(
+                    group=group, version=version, namespace=namespace, plural=plural, name=name, body=cluster_spec
+                )
+        except client.exceptions.ApiException as e:
+            if e.status == 404:
+                self.log.info(f"Creating new Ray cluster: {name}")
+                self.create_custom_object(
+                    group=group, version=version, namespace=namespace, plural=plural, body=cluster_spec
+                )
+            else:
+                raise AirflowException(f"Error accessing Ray cluster '{name}': {e}")
+
+    def _setup_gpu_driver(self, gpu_device_plugin_yaml: str) -> None:
+        """Set up the NVIDIA GPU device plugin if GPU is enabled."""
+        gpu_driver = self.load_yaml_content(gpu_device_plugin_yaml)
+        gpu_driver_name = gpu_driver["metadata"]["name"]
+
+        if not self.get_daemon_set(gpu_driver_name):
+            self.log.info("Creating DaemonSet for NVIDIA device plugin...")
+            self.create_daemon_set(gpu_driver_name, gpu_driver)
+
+    def _setup_load_balancer(self, name: str, namespace: str, context: Context) -> None:
+        """Set up the load balancer and push URLs to XCom."""
+        lb_details: dict[str, Any] = self._wait_for_load_balancer(service_name=f"{name}-head-svc", namespace=namespace)
+
+        if lb_details:
+            self.log.info(lb_details)
+            dns = lb_details["working_address"]
+            for port in lb_details["ports"]:
+                url = f"http://{dns}:{port['port']}"
+                context["task_instance"].xcom_push(key=port["name"], value=url)
+        else:
+            self.log.info("No URLs to push to XCom.")
+
+    def setup_ray_cluster(
+        self,
+        context: Context,
+        ray_cluster_yaml: str,
+        kuberay_version: str,
+        gpu_device_plugin_yaml: str,
+        update_if_exists: bool,
+    ) -> None:
+        """Execute the operator to set up the Ray cluster."""
+        try:
+            self._validate_yaml_file(ray_cluster_yaml)
+
+            self.log.info("::group::Add KubeRay operator")
+            self.install_kuberay_operator(version=kuberay_version)
+            self.log.info("::endgroup::")
+
+            self.log.info("::group::Create Ray Cluster")
+            self.log.info("Loading yaml content for Ray cluster CRD...")
+            cluster_spec = self.load_yaml_content(ray_cluster_yaml)
+
+            kind = cluster_spec["kind"]
+            plural = f"{kind.lower()}s" if kind == "RayCluster" else kind
+            name = cluster_spec["metadata"]["name"]
+            namespace = self.get_namespace()
+            api_version = cluster_spec["apiVersion"]
+            group, version = api_version.split("/") if "/" in api_version else ("", api_version)
+
+            self._create_or_update_cluster(
+                update_if_exists=update_if_exists,
+                group=group,
+                version=version,
+                plural=plural,
+                name=name,
+                namespace=namespace,
+                cluster_spec=cluster_spec,
+            )
+            self.log.info("::endgroup::")
+
+            self._setup_gpu_driver(gpu_device_plugin_yaml=gpu_device_plugin_yaml)
+
+            self.log.info("::group::Setup Load Balancer service")
+            self._setup_load_balancer(name, namespace, context)
+            self.log.info("::endgroup::")
+
+        except Exception as e:
+            self.log.error(f"Error setting up Ray cluster: {e}")
+            raise AirflowException(f"Failed to set up Ray cluster: {e}")
+
+    def _delete_ray_cluster_crd(self, ray_cluster_yaml: str) -> None:
+        """Delete the Ray cluster based on the cluster specification."""
+        self.log.info("Loading yaml content for Ray cluster CRD...")
+        cluster_spec = self.load_yaml_content(ray_cluster_yaml)
+
+        kind = cluster_spec["kind"]
+        plural = f"{kind.lower()}s" if kind == "RayCluster" else kind
+        name = cluster_spec["metadata"]["name"]
+        namespace = self.get_namespace()
+        api_version = cluster_spec["apiVersion"]
+        group, version = api_version.split("/") if "/" in api_version else ("", api_version)
+
+        try:
+            if self.get_custom_object(group=group, version=version, plural=plural, name=name, namespace=namespace):
+                self.delete_custom_object(group=group, version=version, name=name, namespace=namespace, plural=plural)
+                self.log.info(f"Deleted Ray cluster: {name}")
+            else:
+                self.log.info(f"Ray cluster: {name} not found. Skipping the delete step.")
+        except client.exceptions.ApiException as e:
+            if e.status != 404:
+                raise AirflowException(f"Error deleting Ray cluster '{name}': {e}")
+
+    def delete_ray_cluster(self, context: Context, result: Any, ray_cluster_yaml: str, gpu_device_plugin_yaml: str):
+        """Execute the operator to delete the Ray cluster."""
+        try:
+            self._validate_yaml_file(ray_cluster_yaml)
+
+            """Delete the NVIDIA GPU device plugin DaemonSet if it exists."""
+            gpu_driver = self.load_yaml_content(gpu_device_plugin_yaml)
+            gpu_driver_name = gpu_driver["metadata"]["name"]
+
+            if self.get_daemon_set(gpu_driver_name):
+                self.log.info("Deleting DaemonSet for NVIDIA device plugin...")
+                self.delete_daemon_set(gpu_driver_name)
+
+            self.log.info("::group:: Delete Ray Cluster")
+            self._delete_ray_cluster_crd(ray_cluster_yaml=ray_cluster_yaml)
+            self.log.info("::endgroup::")
+            self.uninstall_kuberay_operator()
+        except Exception as e:
+            self.log.error(f"Error deleting Ray cluster: {e}")
+            raise AirflowException(f"Failed to delete Ray cluster: {e}")
 
     def _run_bash_command(self, command: str, env: dict[str, str] | None = None) -> tuple[str | None, str | None]:
         """
