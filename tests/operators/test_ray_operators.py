@@ -157,7 +157,7 @@ class TestSubmitRayJob:
 
         operator.on_kill()
 
-        mock_hook.delete_ray_job.assert_called_once_with("test_job_id")
+        mock_hook.delete_ray_job.assert_called_once_with(None, "test_job_id")
 
     def test_execute_without_xcom(self, mock_hook, context):
         operator = SubmitRayJob(

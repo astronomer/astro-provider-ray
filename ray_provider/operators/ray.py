@@ -176,7 +176,7 @@ class SubmitRayJob(BaseOperator):
         """
         if hasattr(self, "hook") and self.job_id:
             self.log.info(f"Deleting Ray job {self.job_id} due to task kill.")
-            self.hook.delete_ray_job(self.job_id)
+            self.hook.delete_ray_job(self.dashboard_url, self.job_id)
 
     @cached_property
     def hook(self) -> PodOperatorHookProtocol:
