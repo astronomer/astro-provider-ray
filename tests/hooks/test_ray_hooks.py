@@ -62,19 +62,6 @@ class TestRayHook:
         job_id = ray_hook.submit_ray_job(dashboard_url="http://example.com", entrypoint="test_entry")
         assert job_id == "test_job_id"
 
-    @patch("builtins.open", new_callable=mock_open, read_data="key: value\n")
-    def test_validate_yaml_file_success(self, mock_file, ray_hook):
-        with patch("ray_provider.hooks.ray.Path.is_file", return_value=True):
-            ray_hook._validate_yaml_file("test.yaml")
-        mock_file.assert_called_once_with("test.yaml")
-
-    @patch("builtins.open", new_callable=mock_open, read_data="invalid: yaml: content")
-    def test_validate_yaml_file_invalid_yaml(self, mock_file, ray_hook):
-        with patch("ray_provider.hooks.ray.Path.is_file", return_value=True):
-            with patch("yaml.safe_load", side_effect=yaml.YAMLError("Invalid YAML")):
-                with pytest.raises(AirflowException, match="The specified YAML file is not valid YAML"):
-                    ray_hook._validate_yaml_file("test.yaml")
-
     @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
     @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
     @patch("ray_provider.hooks.ray.config.load_kube_config")
@@ -181,6 +168,41 @@ class TestRayHook:
         mock_requests.return_value.text = "key: value\n"
         result = hook.load_yaml_content("http://test-url")
         assert result == {"key": "value"}
+
+    @patch("os.path.isfile")
+    @patch("builtins.open", new_callable=mock_open, read_data="key: value\n")
+    def test_validate_yaml_file_success(self, mock_file, mock_isfile, ray_hook):
+        mock_isfile.return_value = True
+
+        # Test with a valid YAML file
+        ray_hook._validate_yaml_file("valid_file.yaml")
+
+        mock_isfile.assert_called_once_with("valid_file.yaml")
+        mock_file.assert_called_once_with("valid_file.yaml")
+
+    @patch("os.path.isfile")
+    @patch("builtins.open", new_callable=mock_open, read_data="invalid: yaml: content")
+    def test_validate_yaml_file_invalid_yaml(self, mock_file, mock_isfile, ray_hook):
+        mock_isfile.return_value = True
+
+        # Test with an invalid YAML file
+        with pytest.raises(AirflowException) as exc_info:
+            with patch("yaml.safe_load", side_effect=yaml.YAMLError("Invalid YAML")):
+                ray_hook._validate_yaml_file("invalid_file.yaml")
+
+        assert "The specified YAML file is not valid YAML" in str(exc_info.value)
+        mock_isfile.assert_called_once_with("invalid_file.yaml")
+        mock_file.assert_called_once_with("invalid_file.yaml")
+
+    @patch("os.path.isfile")
+    def test_validate_yaml_file_not_exists(self, mock_isfile, ray_hook):
+        mock_isfile.return_value = False
+
+        with pytest.raises(AirflowException) as exc_info:
+            ray_hook._validate_yaml_file("non_existent_file.yaml")
+
+        assert "The specified YAML file does not exist" in str(exc_info.value)
+        mock_isfile.assert_called_once_with("non_existent_file.yaml")
 
     @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
     @patch("ray_provider.hooks.ray.socket.socket")
@@ -565,7 +587,7 @@ class TestRayHook:
 
     @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
     @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.Path.is_file")
+    @patch("os.path.isfile")
     def test_validate_yaml_file_invalid_extension(self, mock_is_file, mock_kubernetes_init, mock_get_connection):
         mock_kubernetes_init.return_value = None
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})

@@ -5,7 +5,6 @@ import socket
 import subprocess
 import tempfile
 import time
-from pathlib import Path
 from typing import Any, AsyncIterator
 
 import requests
@@ -335,18 +334,15 @@ class RayHook(KubernetesHook):  # type: ignore
 
         raise AirflowException(f"LoadBalancer did not become ready after {max_retries} attempts")
 
-    def _validate_yaml_file(self, yaml_file: str | Path) -> None:
+    def _validate_yaml_file(self, yaml_file: str) -> None:
         """Validate the existence and format of the YAML file."""
-        yaml_path = Path(yaml_file)
-
-        if not yaml_path.is_file():
-            raise AirflowException(f"The specified YAML file does not exist: {yaml_path}")
-
-        if not yaml_path.name.endswith((".yaml", ".yml")):
+        if not os.path.isfile(yaml_file):
+            raise AirflowException(f"The specified YAML file does not exist: {yaml_file}")
+        if not yaml_file.endswith((".yaml", ".yml")):
             raise AirflowException("The specified YAML file must have a .yaml or .yml extension.")
 
         try:
-            with yaml_path.open() as stream:
+            with open(yaml_file) as stream:
                 yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             raise AirflowException(f"The specified YAML file is not valid YAML: {exc}")
