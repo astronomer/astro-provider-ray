@@ -1,120 +1,168 @@
-import asyncio
-import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
-from airflow.exceptions import AirflowNotFoundException
+import pytest
+from airflow.triggers.base import TriggerEvent
 from ray.job_submission import JobStatus
 
 from ray_provider.triggers.ray import RayJobTrigger
 
 
-class TestRayJobTrigger(unittest.TestCase):
-    def setUp(self):
-        self.trigger = RayJobTrigger(job_id="123", conn_id="ray_default", xcom_dashboard_url="http://example.com")
+class TestRayJobTrigger:
+    @pytest.fixture
+    def trigger(self):
+        return RayJobTrigger(
+            job_id="test_job_id",
+            conn_id="test_conn",
+            xcom_dashboard_url="http://test-dashboard.com",
+            poll_interval=1,
+            fetch_logs=True,
+        )
 
-    @patch("ray_provider.hooks.ray.RayHook.get_ray_job_status")
-    def test_is_terminal_state(self, mock_get_status):
-        mock_get_status.return_value = JobStatus.SUCCEEDED
-        self.assertTrue(self.trigger._is_terminal_state())
-
-    @patch("ray_provider.hooks.ray.RayHook.get_ray_job_status")
-    def test_is_not_terminal_state(self, mock_get_status):
-        mock_get_status.return_value = JobStatus.RUNNING
-        self.assertFalse(self.trigger._is_terminal_state())
-
-    @patch("asyncio.sleep", return_value=None)
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state", side_effect=[False, False, True])
-    @patch("ray_provider.hooks.ray.RayHook.get_ray_job_status", return_value=JobStatus.SUCCEEDED)
-    async def test_run_successful_completion(self, mock_get_status, mock_is_terminal, mock_sleep):
-        generator = self.trigger.run()
-        event = await generator.asend(None)
-        self.assertEqual(event.payload["status"], JobStatus.SUCCEEDED)
-        self.assertEqual(event.payload["job_id"], "123")
-
-    @patch("asyncio.sleep", return_value=None)
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state", return_value=False)
-    @patch("time.time", side_effect=[0, 100, 200, 300, 10000])  # Simulating time passing and timeout
-    async def test_run_timeout(self, mock_time, mock_is_terminal, mock_sleep):
-        generator = self.trigger.run()
-        event = await generator.asend(None)
-        self.assertEqual(event.payload["status"], str(JobStatus.FAILED))
-        self.assertTrue("Timeout", event.payload["message"])
-
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state", side_effect=Exception("Error occurred"))
-    async def test_run_exception(self, mock_is_terminal):
-        generator = self.trigger.run()
-        event = await generator.asend(None)
-        self.assertEqual(event.payload["status"], str(JobStatus.FAILED))
-        self.assertTrue("Error occurred", event.payload["message"])
-
-    @patch("ray_provider.hooks.ray.RayHook.get_ray_tail_logs")
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state", side_effect=[False, True])
-    @patch("ray_provider.hooks.ray.RayHook.get_ray_job_status", return_value=JobStatus.SUCCEEDED)
-    @patch("asyncio.sleep", return_value=None)
-    async def test_run_with_logs(self, mock_sleep, mock_get_status, mock_is_terminal, mock_get_job_logs):
-        mock_get_job_logs.return_value = AsyncMock(return_value=["log line 1", "log line 2"])
-        self.trigger.fetch_logs = True
-        generator = self.trigger.run()
-        event = await generator.asend(None)
-        self.assertEqual(event.payload["status"], JobStatus.SUCCEEDED)
-        mock_get_job_logs.assert_called_once()
-
-    async def test_run_no_job_id_provided(self):
-        trigger = RayJobTrigger(job_id="", conn_id="ray_default", xcom_dashboard_url="http://example.com")
+    @pytest.mark.asyncio
+    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    async def test_run_no_job_id(self, mock_hook, mock_is_terminal):
+        mock_is_terminal.return_value = True
+        mock_hook.get_ray_job_status.return_value = JobStatus.FAILED
+        trigger = RayJobTrigger(job_id="", poll_interval=1, conn_id="test", xcom_dashboard_url="test")
         generator = trigger.run()
         event = await generator.asend(None)
-        self.assertEqual(event.payload["status"], str(JobStatus.FAILED))
-        self.assertTrue("No job_id provided", event.payload["message"])
+        assert event == TriggerEvent(
+            {"status": JobStatus.FAILED, "message": "Job  completed with status FAILED", "job_id": ""}
+        )
 
-    @patch(
-        "ray_provider.hooks.ray.RayHook.__init__",
-        side_effect=AirflowNotFoundException("The conn_id `ray_default` isn't defined"),
-    )
-    def test_hook_method(self, mock_hook_init):
-        with self.assertRaises(AirflowNotFoundException) as context:
-            # Accessing the hook property should now raise the exception
-            _ = self.trigger.hook
-        self.assertTrue("The conn_id `ray_default` isn't defined", str(context.exception))
+    @pytest.mark.asyncio
+    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    async def test_run_job_succeeded(self, mock_hook, mock_is_terminal):
+        mock_is_terminal.side_effect = [False, True]
+        mock_hook.get_ray_job_status.return_value = JobStatus.SUCCEEDED
+        trigger = RayJobTrigger(job_id="test_job_id", poll_interval=1, conn_id="test", xcom_dashboard_url="test")
+        generator = trigger.run()
+        event = await generator.asend(None)
+        assert event == TriggerEvent(
+            {
+                "status": JobStatus.SUCCEEDED,
+                "message": f"Job test_job_id completed with status {JobStatus.SUCCEEDED}",
+                "job_id": "test_job_id",
+            }
+        )
 
-    def test_serialize(self):
-        result = self.trigger.serialize()
-        expected_output = (
+    @pytest.mark.asyncio
+    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    async def test_run_job_stopped(self, mock_hook, mock_is_terminal, trigger):
+        mock_is_terminal.side_effect = [False, True]
+        mock_hook.get_ray_job_status.return_value = JobStatus.STOPPED
+
+        generator = trigger.run()
+        event = await generator.asend(None)
+
+        assert event == TriggerEvent(
+            {
+                "status": JobStatus.STOPPED,
+                "message": f"Job test_job_id completed with status {JobStatus.STOPPED}",
+                "job_id": "test_job_id",
+            }
+        )
+
+    @pytest.mark.asyncio
+    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    async def test_run_job_failed(self, mock_hook, mock_is_terminal, trigger):
+        mock_is_terminal.side_effect = [False, True]
+        mock_hook.get_ray_job_status.return_value = JobStatus.FAILED
+
+        generator = trigger.run()
+        event = await generator.asend(None)
+
+        assert event == TriggerEvent(
+            {
+                "status": JobStatus.FAILED,
+                "message": f"Job test_job_id completed with status {JobStatus.FAILED}",
+                "job_id": "test_job_id",
+            }
+        )
+
+    @pytest.mark.asyncio
+    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    @patch("ray_provider.triggers.ray.RayJobTrigger._stream_logs")
+    async def test_run_with_log_streaming(self, mock_stream_logs, mock_hook, mock_is_terminal, trigger):
+        mock_is_terminal.side_effect = [False, True]
+        mock_hook.get_ray_job_status.return_value = JobStatus.SUCCEEDED
+        mock_stream_logs.return_value = None
+
+        generator = trigger.run()
+        event = await generator.asend(None)
+
+        mock_stream_logs.assert_called_once()
+        assert event == TriggerEvent(
+            {
+                "status": JobStatus.SUCCEEDED,
+                "message": f"Job test_job_id completed with status {JobStatus.SUCCEEDED}",
+                "job_id": "test_job_id",
+            }
+        )
+
+    @pytest.mark.asyncio
+    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    async def test_run_with_exception(self, mock_hook, mock_is_terminal, trigger):
+        mock_is_terminal.side_effect = Exception("Test exception")
+
+        generator = trigger.run()
+        event = await generator.asend(None)
+
+        assert event == TriggerEvent(
+            {
+                "status": str(JobStatus.FAILED),
+                "message": "Test exception",
+                "job_id": "test_job_id",
+            }
+        )
+
+    @pytest.mark.asyncio
+    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    async def test_stream_logs(self, mock_hook, trigger):
+        # Create a mock async iterator
+        async def mock_async_iterator():
+            for item in ["Log line 1\n", "Log line 2\n"]:
+                yield item
+
+        # Set up the mock to return an async iterator
+        mock_hook.get_ray_tail_logs.return_value = mock_async_iterator()
+
+        with patch("ray_provider.triggers.ray.RayJobTrigger.log") as mock_log:
+            await trigger._stream_logs()
+
+            mock_log.info.assert_any_call("::group::test_job_id logs")
+            mock_log.info.assert_any_call("Log line 1")
+            mock_log.info.assert_any_call("Log line 2")
+            mock_log.info.assert_any_call("::endgroup::")
+
+    def test_serialize(self, trigger):
+        serialized = trigger.serialize()
+        assert serialized == (
             "ray_provider.triggers.ray.RayJobTrigger",
             {
-                "job_id": "123",
-                "conn_id": "ray_default",
-                "xcom_dashboard_url": "http://example.com",
+                "job_id": "test_job_id",
+                "conn_id": "test_conn",
+                "xcom_dashboard_url": "http://test-dashboard.com",
                 "fetch_logs": True,
-                "poll_interval": 30,
+                "poll_interval": 1,
             },
         )
-        self.assertEqual(result, expected_output)
 
-    @patch("ray_provider.hooks.ray.RayHook.get_ray_job_status")
-    @patch("ray_provider.hooks.ray.RayHook.get_ray_tail_logs")
-    @patch("asyncio.sleep", return_value=None)
-    async def test_ray_run_trigger(self, mocked_sleep, mocked_get_job_logs, mocked_get_job_status):
-        mocked_get_job_status.return_value = JobStatus.SUCCEEDED
-        mocked_get_job_logs.return_value = AsyncMock(return_value=["log line 1", "log line 2"])
+    @pytest.mark.asyncio
+    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    async def test_is_terminal_state(self, mock_hook, trigger):
+        mock_hook.get_ray_job_status.side_effect = [
+            JobStatus.PENDING,
+            JobStatus.RUNNING,
+            JobStatus.SUCCEEDED,
+        ]
 
-        trigger = RayJobTrigger(
-            conn_id="test_conn",
-            job_id="1234",
-            poll_interval=1,
-        )
-
-        task = asyncio.create_task(trigger.run().__anext__())
-        await asyncio.sleep(0.5)
-
-        self.assertFalse(task.done())
-
-        await asyncio.sleep(2)
-        result = await task
-
-        self.assertEqual(result.payload["status"], JobStatus.SUCCEEDED)
-        self.assertEqual(result.payload["message"], "Job 1234 completed with status JobStatus.SUCCEEDED")
-        self.assertEqual(result.payload["job_id"], "1234")
-
-
-if __name__ == "__main__":
-    unittest.main()
+        assert not trigger._is_terminal_state()
+        assert not trigger._is_terminal_state()
+        assert trigger._is_terminal_state()

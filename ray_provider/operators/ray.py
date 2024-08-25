@@ -95,7 +95,6 @@ class SubmitRayJob(BaseOperator):
     It supports deferring execution and resuming based on job status changes, making it suitable for long-running jobs.
 
     :param conn_id: The connection ID for the Ray cluster.
-    :param dashboard_url: The URL of the Ray dashboard. If not provided, it will be retrieved from XCom.
     :param entrypoint: The command or script to execute as the Ray job.
     :param runtime_env: The runtime environment configuration for the Ray job.
     :param num_cpus: Number of CPUs required for the job. Defaults to 0.
@@ -131,9 +130,9 @@ class SubmitRayJob(BaseOperator):
         conn_id: str,
         entrypoint: str,
         runtime_env: dict[str, Any],
-        num_cpus: float = 0,
-        num_gpus: float = 0,
-        memory: float = 0,
+        num_cpus: int | float = 0,
+        num_gpus: int | float = 0,
+        memory: int | float = 0,
         resources: dict[str, Any] | None = None,
         ray_cluster_yaml: str | None = None,
         kuberay_version: str = "1.0.0",
@@ -153,7 +152,7 @@ class SubmitRayJob(BaseOperator):
         self.num_cpus = num_cpus
         self.num_gpus = num_gpus
         self.memory = memory
-        self.ray_resources = resources or {}
+        self.ray_resources = resources
         self.ray_cluster_yaml = ray_cluster_yaml
         self.update_if_exists = update_if_exists
         self.kuberay_version = kuberay_version

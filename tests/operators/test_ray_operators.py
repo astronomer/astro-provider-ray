@@ -274,7 +274,7 @@ class TestSubmitRayJob:
                 entrypoint_num_cpus=0,
                 entrypoint_num_gpus=0,
                 entrypoint_memory=0,
-                entrypoint_resources={},
+                entrypoint_resources=None,
             )
 
     @pytest.mark.parametrize(

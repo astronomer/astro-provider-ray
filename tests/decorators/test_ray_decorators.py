@@ -56,7 +56,7 @@ class TestRayDecoratedOperator:
         assert operator.num_cpus == 1
         assert operator.num_gpus == 0
         assert operator.memory is None
-        assert operator.ray_resources == {}  # Changed from None to {}
+        assert operator.ray_resources is None
         assert operator.fetch_logs == True
         assert operator.wait_for_completion == True
         assert operator.job_timeout_seconds == 600

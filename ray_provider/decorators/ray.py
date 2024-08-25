@@ -40,7 +40,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         self.num_cpus: int | float = config.get("num_cpus", 1)
         self.num_gpus: int | float = config.get("num_gpus", 0)
         self.memory: int | float = config.get("memory", None)
-        self.ray_resources: dict[str, Any] = config.get("resources", {})
+        self.ray_resources: dict[str, Any] | None = config.get("resources", None)
         self.ray_cluster_yaml: str | None = config.get("ray_cluster_yaml", None)
         self.fetch_logs: bool = config.get("fetch_logs", True)
         self.wait_for_completion: bool = config.get("wait_for_completion", True)
