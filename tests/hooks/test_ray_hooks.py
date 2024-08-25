@@ -573,7 +573,7 @@ class TestRayHook:
 
     @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
     @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.Path.is_file")
+    @patch("os.path.isfile")
     def test_validate_yaml_file_not_found(self, mock_is_file, mock_kubernetes_init, mock_get_connection):
         mock_kubernetes_init.return_value = None
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
