@@ -466,7 +466,7 @@ class RayHook(KubernetesHook):  # type: ignore
             if e.status != 404:
                 raise AirflowException(f"Error deleting Ray cluster '{name}': {e}")
 
-    def delete_ray_cluster(self, context: Context, ray_cluster_yaml: str, gpu_device_plugin_yaml: str) -> None:
+    def delete_ray_cluster(self, ray_cluster_yaml: str, gpu_device_plugin_yaml: str) -> None:
         """Execute the operator to delete the Ray cluster."""
         try:
             self._validate_yaml_file(ray_cluster_yaml)

@@ -666,9 +666,7 @@ class TestRayHook:
         mock_get_daemon_set.return_value = MagicMock()
         mock_get_custom_object.return_value = MagicMock()
 
-        context = {"task_instance": MagicMock()}
         ray_hook.delete_ray_cluster(
-            context=context,
             ray_cluster_yaml="test.yaml",
             gpu_device_plugin_yaml="gpu.yaml",
         )

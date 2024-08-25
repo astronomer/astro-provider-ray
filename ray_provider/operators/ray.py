@@ -177,6 +177,8 @@ class SubmitRayJob(BaseOperator):
         if hasattr(self, "hook") and self.job_id:
             self.log.info(f"Deleting Ray job {self.job_id} due to task kill.")
             self.hook.delete_ray_job(self.dashboard_url, self.job_id)
+        if self.ray_cluster_yaml:
+            self._delete_cluster()
 
     @cached_property
     def hook(self) -> PodOperatorHookProtocol:
@@ -225,12 +227,11 @@ class SubmitRayJob(BaseOperator):
         except Exception as e:
             raise e
 
-    def _delete_cluster(self, context: Context) -> None:
+    def _delete_cluster(self) -> None:
         # Teardown the cluster
         try:
             if self.ray_cluster_yaml:
                 self.hook.delete_ray_cluster(
-                    context=context,
                     ray_cluster_yaml=self.ray_cluster_yaml,
                     gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
                 )
@@ -311,4 +312,4 @@ class SubmitRayJob(BaseOperator):
         else:
             raise AirflowException(f"Unexpected event status for job {self.job_id}: {event['status']}")
 
-        self._delete_cluster(context=context)
+        self._delete_cluster()
