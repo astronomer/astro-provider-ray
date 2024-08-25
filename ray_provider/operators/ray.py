@@ -163,7 +163,7 @@ class SubmitRayJob(BaseOperator):
         self.job_timeout_seconds = job_timeout_seconds
         self.poll_interval = poll_interval
         self.xcom_task_key = xcom_task_key
-        self.dashboard_url = None
+        self.dashboard_url: str | None = None
         self.job_id = ""
         self.terminal_states = {JobStatus.SUCCEEDED, JobStatus.STOPPED, JobStatus.FAILED}
 
@@ -186,26 +186,56 @@ class SubmitRayJob(BaseOperator):
     def _get_dashboard_url(self, context: Context) -> str | None:
         """
         Retrieve the Ray dashboard URL from XCom.
-
         :param context: The context in which the task is being executed.
         :return: The Ray dashboard URL if available, None otherwise.
         """
-
         if self.xcom_task_key:
             parts = self.xcom_task_key.split(".", 1)
-            task, key = parts if len(parts) == 2 else (None, self.xcom_task_key)
+            task: str | None
+            key: str
+            if len(parts) == 2:
+                task, key = parts
+            else:
+                task, key = None, self.xcom_task_key
 
             ti = context["ti"]
-            if key is None:
+
+            if task is None:
                 current_task = context["task"]
                 dashboard_url = ti.xcom_pull(task_ids=current_task.task_id, key=key)
             else:
                 dashboard_url = ti.xcom_pull(task_ids=task, key=key)
 
             self.log.info(f"Dashboard URL retrieved from XCom: {dashboard_url}")
-            return dashboard_url
+            return str(dashboard_url) if dashboard_url is not None else None
 
         return None
+
+    def _setup_cluster(self, context: Context) -> None:
+        # Setup the cluster
+        try:
+            if self.ray_cluster_yaml:
+                self.hook.setup_ray_cluster(
+                    context=context,
+                    ray_cluster_yaml=self.ray_cluster_yaml,
+                    kuberay_version=self.kuberay_version,
+                    gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
+                    update_if_exists=self.update_if_exists,
+                )
+        except Exception as e:
+            raise e
+
+    def _delete_cluster(self, context: Context) -> None:
+        # Teardown the cluster
+        try:
+            if self.ray_cluster_yaml:
+                self.hook.delete_ray_cluster(
+                    context=context,
+                    ray_cluster_yaml=self.ray_cluster_yaml,
+                    gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
+                )
+        except Exception as e:
+            raise e
 
     def execute(self, context: Context) -> str:
         """
@@ -219,18 +249,7 @@ class SubmitRayJob(BaseOperator):
         :raises AirflowException: If the job fails, is cancelled, or reaches an unexpected state.
         """
 
-        # Setup the cluster
-        try:
-            if self.ray_cluster_yaml:
-                self.hook.setup_ray_cluster(
-                    context=context,
-                    ray_cluster_yaml=self.ray_cluster_yaml,
-                    kuberay_version=self.kuberay_version,
-                    gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
-                    update_if_exists=self.update_if_exists,
-                )
-        except Exception as e:
-            raise e
+        self._setup_cluster(context=context)
 
         self.dashboard_url = self._get_dashboard_url(context)
 
@@ -292,13 +311,4 @@ class SubmitRayJob(BaseOperator):
         else:
             raise AirflowException(f"Unexpected event status for job {self.job_id}: {event['status']}")
 
-        # Teardown the cluster
-        try:
-            if self.ray_cluster_yaml:
-                self.hook.delete_ray_cluster(
-                    context=context,
-                    ray_cluster_yaml=self.ray_cluster_yaml,
-                    gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
-                )
-        except Exception as e:
-            raise e
+        self._delete_cluster(context=context)
