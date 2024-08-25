@@ -84,7 +84,7 @@ class DeleteRayCluster(BaseOperator):
         return RayHook(conn_id=self.conn_id)
 
     def execute(self, context: Context) -> None:
-        self.hook.delete_ray_cluster(context, self.ray_cluster_yaml, self.gpu_device_plugin_yaml)
+        self.hook.delete_ray_cluster(self.ray_cluster_yaml, self.gpu_device_plugin_yaml)
 
 
 class SubmitRayJob(BaseOperator):
@@ -304,12 +304,13 @@ class SubmitRayJob(BaseOperator):
         :param event: The event containing the job execution result.
         :raises AirflowException: If the job execution fails, is cancelled, or reaches an unexpected state.
         """
-        if event["status"] in [JobStatus.STOPPED, JobStatus.FAILED]:
-            self.log.info(f"Ray job {self.job_id} execution not completed successfully...")
-            raise AirflowException(f"Job {self.job_id} {event['status'].lower()}: {event['message']}")
-        elif event["status"] == JobStatus.SUCCEEDED:
-            self.log.info(f"Ray job {self.job_id} execution succeeded.")
-        else:
-            raise AirflowException(f"Unexpected event status for job {self.job_id}: {event['status']}")
-
-        self._delete_cluster()
+        try:
+            if event["status"] in [JobStatus.STOPPED, JobStatus.FAILED]:
+                self.log.info(f"Ray job {self.job_id} execution not completed successfully...")
+                raise AirflowException(f"Job {self.job_id} {event['status'].lower()}: {event['message']}")
+            elif event["status"] == JobStatus.SUCCEEDED:
+                self.log.info(f"Ray job {self.job_id} execution succeeded.")
+            else:
+                raise AirflowException(f"Unexpected event status for job {self.job_id}: {event['status']}")
+        finally:
+            self._delete_cluster()
