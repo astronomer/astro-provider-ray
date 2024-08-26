@@ -5,8 +5,7 @@ from airflow.decorators import dag, task
 
 from ray_provider.decorators.ray import ray
 
-CONN_ID = "ray_conn"
-RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
+CONN_ID = "ray_job"
 FOLDER_PATH = Path(__file__).parent / "ray_scripts"
 RAY_TASK_CONFIG = {
     "conn_id": CONN_ID,
@@ -15,13 +14,11 @@ RAY_TASK_CONFIG = {
     "num_gpus": 0,
     "memory": 0,
     "poll_interval": 5,
-    "ray_cluster_yaml": str(RAY_SPEC),
-    "xcom_task_key": "dashboard",
 }
 
 
 @dag(
-    dag_id="Ray_Taskflow_Example",
+    dag_id="Ray_Taskflow_Example_Existing_Cluster",
     start_date=datetime(2023, 1, 1),
     schedule=None,
     catchup=False,

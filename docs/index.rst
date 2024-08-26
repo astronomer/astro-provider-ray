@@ -30,7 +30,7 @@ Table of Contents
 - `Quickstart`_
 - `What is the Ray provider?`_
 - `Components`_
-- `Contact the Devs`_
+- `Getting Involved`_
 - `Changelog`_
 - `Contributing Guide`_
 
@@ -83,13 +83,9 @@ Use Cases
 Components
 ----------
 
-Hooks
-^^^^^
-- **RayHook**: Sets up methods needed to run operators and decorators, working with the 'Ray' connection type to manage Ray clusters and submit jobs.
-
 Decorators
 ^^^^^^^^^^
-- **_RayDecoratedOperator**: Simplifies integration by decorating task functions to work seamlessly with Ray.
+- **@ray.task()**: Simplifies integration by decorating task functions to work seamlessly with Ray.
 
 Operators
 ^^^^^^^^^
@@ -97,23 +93,37 @@ Operators
 - **DeleteRayCluster**: Deletes an existing Ray cluster on kubernetes using the same Ray connection
 - **SubmitRayJob**: Submits jobs to a Ray cluster using a specified host name and monitors its execution
 
+Hooks
+^^^^^
+- **RayHook**: Sets up methods needed to run operators and decorators, working with the 'Ray' connection type to manage Ray clusters and submit jobs.
+
 Triggers
 ^^^^^^^^
 - **RayJobTrigger**: Monitors asynchronous job execution submitted via the ``SubmitRayJob`` operator or using the ``@ray.task()`` decorator and prints real-time logs to the the Airflow UI
 
 
-Contact the devs
+Getting Involved
 ----------------
+.. list-table::
+   :widths: 25 50 25
+   :header-rows: 1
 
-If you have any questions, issues, or feedback regarding the astro-provider-ray package, please don't hesitate to reach out to the development team. You can contact us through the following channels:
+   * - Platform
+     - Purpose
+     - Estimated Response Time
+   * - `Discussion Forum`_
+     - General inquiries and discussions
+     - < 3 day
+   * - `GitHub Issues`_
+     - Bug reports and feature requests
+     - < 1-2 days
+   * - `Slack`_
+     - Quick questions and real-time chat. Join (#airflow-ray)
+     - < 12 hrs
 
-- **GitHub Issues**: For bug reports, feature requests, or general questions, please open an issue on our `GitHub repository`_.
-- **Slack Channel**: Join Apache Airflow's `Slack <https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ>`_. Visit ``#airflow-ray`` for discussions and help.
-
-We appreciate your input and are committed to improving this package to better serve the community.
-
-.. _GitHub repository: https://github.com/astronomer/astro-provider-ray/issues
-.. _#airflow-ray: https://astronomer-community.slack.com/archives/C01234567
+.. _`Discussion Forum`: https://github.com/astronomer/astro-provider-ray/discussions
+.. _`GitHub Issues`: https://github.com/astronomer/astro-provider-ray/issues
+.. _`Slack`: https://join.slack.com/t/apache-airflow/shared_invite/zt-2nsw28cw1-Lw4qCS0fgme4UI_vWRrwEQ
 
 Changelog
 ---------

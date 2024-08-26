@@ -1,16 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from airflow import DAG
 
 from ray_provider.operators.ray import SubmitRayJob
-
-default_args = {
-    "owner": "airflow",
-    "start_date": datetime(2024, 3, 26),
-    "retries": 1,
-    "retry_delay": timedelta(minutes=0),
-}
 
 CONN_ID = "ray_conn"
 RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
@@ -18,10 +11,11 @@ FOLDER_PATH = Path(__file__).parent / "ray_scripts"
 RAY_RUNTIME_ENV = {"working_dir": str(FOLDER_PATH)}
 
 dag = DAG(
-    "Single_Operator",
-    default_args=default_args,
-    description="Setup Ray cluster and submit a job",
+    "Ray_Single_Operator",
+    start_date=datetime(2023, 1, 1),
     schedule=None,
+    catchup=False,
+    tags=["ray", "example"],
 )
 
 submit_ray_job = SubmitRayJob(

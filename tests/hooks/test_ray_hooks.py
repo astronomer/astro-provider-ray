@@ -37,7 +37,6 @@ class TestRayHook:
     def test_get_connection_form_widgets(self):
         widgets = RayHook.get_connection_form_widgets()
         assert "address" in widgets
-        assert "create_cluster_if_needed" in widgets
         assert "kube_config_path" in widgets
         assert "namespace" in widgets
 

@@ -20,9 +20,9 @@ class SetupRayCluster(BaseOperator):
 
     :param conn_id: The connection ID for the Ray cluster.
     :param ray_cluster_yaml: Path to the YAML file defining the Ray cluster.
-    :param use_gpu: Whether to use GPU for the cluster.
-    :param kuberay_version: Version of KubeRay to install.
-    :param gpu_device_plugin_yaml: URL or path to the NVIDIA GPU device plugin YAML.
+    :param kuberay_version: Version of KubeRay to install. Defaults to "1.0.0".
+    :param gpu_device_plugin_yaml: URL or path to the GPU device plugin YAML. Defaults to NVIDIA's plugin.
+    :param update_if_exists: Whether to update the cluster if it already exists. Defaults to False.
     """
 
     def __init__(
@@ -47,6 +47,11 @@ class SetupRayCluster(BaseOperator):
         return RayHook(conn_id=self.conn_id)
 
     def execute(self, context: Context) -> None:
+        """
+        Execute the setup of the Ray cluster.
+
+        :param context: The context in which the operator is being executed.
+        """
         self.hook.setup_ray_cluster(
             context=context,
             ray_cluster_yaml=self.ray_cluster_yaml,
@@ -62,8 +67,7 @@ class DeleteRayCluster(BaseOperator):
 
     :param conn_id: The connection ID for the Ray cluster.
     :param ray_cluster_yaml: Path to the YAML file defining the Ray cluster.
-    :param use_gpu: Whether GPU was used for the cluster.
-    :param gpu_device_plugin_yaml: URL or path to the NVIDIA GPU device plugin YAML.
+    :param gpu_device_plugin_yaml: URL or path to the GPU device plugin YAML. Defaults to NVIDIA's plugin.
     """
 
     def __init__(
@@ -84,6 +88,11 @@ class DeleteRayCluster(BaseOperator):
         return RayHook(conn_id=self.conn_id)
 
     def execute(self, context: Context) -> None:
+        """
+        Execute the deletion of the Ray cluster.
+
+        :param context: The context in which the operator is being executed.
+        """
         self.hook.delete_ray_cluster(self.ray_cluster_yaml, self.gpu_device_plugin_yaml)
 
 
@@ -187,6 +196,7 @@ class SubmitRayJob(BaseOperator):
     def _get_dashboard_url(self, context: Context) -> str | None:
         """
         Retrieve the Ray dashboard URL from XCom.
+
         :param context: The context in which the task is being executed.
         :return: The Ray dashboard URL if available, None otherwise.
         """
@@ -213,7 +223,12 @@ class SubmitRayJob(BaseOperator):
         return None
 
     def _setup_cluster(self, context: Context) -> None:
-        # Setup the cluster
+        """
+        Set up the Ray cluster if a cluster YAML is provided.
+
+        :param context: The context in which the task is being executed.
+        :raises Exception: If there's an error during cluster setup.
+        """
         try:
             if self.ray_cluster_yaml:
                 self.hook.setup_ray_cluster(
@@ -227,7 +242,11 @@ class SubmitRayJob(BaseOperator):
             raise e
 
     def _delete_cluster(self) -> None:
-        # Teardown the cluster
+        """
+        Delete the Ray cluster if a cluster YAML is provided.
+
+        :raises Exception: If there's an error during cluster deletion.
+        """
         try:
             if self.ray_cluster_yaml:
                 self.hook.delete_ray_cluster(
@@ -297,7 +316,7 @@ class SubmitRayJob(BaseOperator):
         Handle the completion of a deferred Ray job execution.
 
         This method is called when the deferred job execution completes. It processes the final
-        job status and raises exceptions for failed or cancelled jobs.
+        job status and raises exceptions for failed or cancelled jobs. It finally deletes the cluster when the ray spec is provided
 
         :param context: The context in which the task is being executed.
         :param event: The event containing the job execution result.

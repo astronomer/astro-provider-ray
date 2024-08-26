@@ -20,8 +20,10 @@ class RayHook(KubernetesHook):  # type: ignore
     """
     Airflow Hook for interacting with Ray Job Submission Client and Kubernetes Cluster.
 
+    This hook provides methods to interact with Ray clusters, submit and manage Ray jobs,
+    and handle Kubernetes resources related to Ray deployments.
+
     :param conn_id: The connection ID to use when fetching connection info.
-    :param xcom_dashboard_url: The URL of the Ray dashboard (optional).
     """
 
     conn_name_attr = "ray_conn_id"
@@ -56,7 +58,7 @@ class RayHook(KubernetesHook):  # type: ignore
 
         return {
             "address": StringField(lazy_gettext("Ray dashboard url"), widget=BS3TextFieldWidget()),
-            "create_cluster_if_needed": BooleanField(lazy_gettext("Create cluster if needed")),
+            # "create_cluster_if_needed": BooleanField(lazy_gettext("Create cluster if needed")),
             "cookies": StringField(lazy_gettext("Cookies"), widget=BS3TextFieldWidget()),
             "metadata": StringField(lazy_gettext("Metadata"), widget=BS3TextFieldWidget()),
             "headers": StringField(lazy_gettext("Headers"), widget=BS3TextFieldWidget()),
@@ -73,12 +75,17 @@ class RayHook(KubernetesHook):  # type: ignore
         self,
         conn_id: str = default_conn_name,
     ) -> None:
+        """
+        Initialize the RayHook.
+
+        :param conn_id: The connection ID to use when fetching connection info.
+        """
         super().__init__(conn_id=conn_id)
         self.conn_id = conn_id
 
         self.address = self._get_field("address") or os.getenv("RAY_ADDRESS")
         self.log.info(f"Ray cluster address is: {self.address}")
-        self.create_cluster_if_needed = self._get_field("create_cluster_if_needed") or False
+        self.create_cluster_if_needed = False
         self.cookies = self._get_field("cookies")
         self.metadata = self._get_field("metadata")
         self.headers = self._get_field("headers")
@@ -103,6 +110,16 @@ class RayHook(KubernetesHook):  # type: ignore
     def _setup_kubeconfig(
         self, kubeconfig_path: str | None, kubeconfig_content: str | None, cluster_context: str | None
     ) -> None:
+        """
+        Set up the Kubernetes configuration.
+
+        This method sets up the Kubernetes configuration based on the provided kubeconfig path or content.
+
+        :param kubeconfig_path: Path to the kubeconfig file.
+        :param kubeconfig_content: Content of the kubeconfig file.
+        :param cluster_context: The Kubernetes cluster context to use.
+        :raises AirflowException: If both kubeconfig_path and kubeconfig_content are provided.
+        """
         num_selected_configuration = sum(1 for o in [kubeconfig_path, kubeconfig_content] if o)
         if num_selected_configuration > 1:
             raise AirflowException(
@@ -129,6 +146,7 @@ class RayHook(KubernetesHook):  # type: ignore
         """
         Establishes a connection to the Ray Job Submission Client.
 
+        :param dashboard_url: The URL of the Ray dashboard.
         :return: An instance of JobSubmissionClient.
         :raises AirflowException: If the connection fails.
         """
@@ -154,6 +172,7 @@ class RayHook(KubernetesHook):  # type: ignore
         """
         Submits a job to the Ray cluster.
 
+        :param dashboard_url: The URL of the Ray dashboard.
         :param entrypoint: The command or script to run.
         :param runtime_env: The runtime environment for the job.
         :param job_config: Additional job configuration parameters.
@@ -168,6 +187,7 @@ class RayHook(KubernetesHook):  # type: ignore
         """
         Deletes a job from the Ray cluster.
 
+        :param dashboard_url: The URL of the Ray dashboard.
         :param job_id: The ID of the job to delete.
         :return: The result of the delete operation.
         """
@@ -179,6 +199,7 @@ class RayHook(KubernetesHook):  # type: ignore
         """
         Gets the status of a submitted job.
 
+        :param dashboard_url: The URL of the Ray dashboard.
         :param job_id: The ID of the job.
         :return: Status of the job.
         """
@@ -191,6 +212,7 @@ class RayHook(KubernetesHook):  # type: ignore
         """
         Retrieves the logs of a submitted job.
 
+        :param dashboard_url: The URL of the Ray dashboard.
         :param job_id: The ID of the job.
         :return: Logs of the job.
         """
@@ -202,6 +224,7 @@ class RayHook(KubernetesHook):  # type: ignore
         """
         Tails the logs of a submitted job asynchronously.
 
+        :param dashboard_url: The URL of the Ray dashboard.
         :param job_id: The ID of the job.
         :return: An async iterator of log lines.
         """
@@ -335,7 +358,12 @@ class RayHook(KubernetesHook):  # type: ignore
         raise AirflowException(f"LoadBalancer did not become ready after {max_retries} attempts")
 
     def _validate_yaml_file(self, yaml_file: str) -> None:
-        """Validate the existence and format of the YAML file."""
+        """
+        Validate the existence and format of the YAML file.
+
+        :param yaml_file: Path to the YAML file.
+        :raises AirflowException: If the file doesn't exist, has an invalid extension, or contains invalid YAML.
+        """
         if not os.path.isfile(yaml_file):
             raise AirflowException(f"The specified YAML file does not exist: {yaml_file}")
         if not yaml_file.endswith((".yaml", ".yml")):
@@ -357,7 +385,18 @@ class RayHook(KubernetesHook):  # type: ignore
         namespace: str,
         cluster_spec: dict[str, Any],
     ) -> None:
-        """Create or update the Ray cluster based on the cluster specification."""
+        """
+        Create or update the Ray cluster based on the cluster specification.
+
+        :param update_if_exists: Whether to update the cluster if it already exists.
+        :param group: The API group of the custom resource.
+        :param version: The API version of the custom resource.
+        :param plural: The plural name of the custom resource.
+        :param name: The name of the Ray cluster.
+        :param namespace: The namespace where the cluster should be created/updated.
+        :param cluster_spec: The specification of the Ray cluster.
+        :raises AirflowException: If there's an error accessing or creating the Ray cluster.
+        """
         try:
             self.get_custom_object(group=group, version=version, plural=plural, name=name, namespace=namespace)
             if update_if_exists:
@@ -375,7 +414,11 @@ class RayHook(KubernetesHook):  # type: ignore
                 raise AirflowException(f"Error accessing Ray cluster '{name}': {e}")
 
     def _setup_gpu_driver(self, gpu_device_plugin_yaml: str) -> None:
-        """Set up the NVIDIA GPU device plugin if GPU is enabled."""
+        """
+        Set up the GPU device plugin if GPU is enabled. Defaults to NVIDIA's plugin
+
+        :param gpu_device_plugin_yaml: Path or URL to the GPU device plugin YAML.
+        """
         gpu_driver = self.load_yaml_content(gpu_device_plugin_yaml)
         gpu_driver_name = gpu_driver["metadata"]["name"]
 
@@ -384,7 +427,13 @@ class RayHook(KubernetesHook):  # type: ignore
             self.create_daemon_set(gpu_driver_name, gpu_driver)
 
     def _setup_load_balancer(self, name: str, namespace: str, context: Context) -> None:
-        """Set up the load balancer and push URLs to XCom."""
+        """
+        Set up the load balancer and push URLs to XCom.
+
+        :param name: The name of the Ray cluster.
+        :param namespace: The namespace where the cluster is deployed.
+        :param context: The Airflow task context.
+        """
         lb_details: dict[str, Any] = self._wait_for_load_balancer(service_name=f"{name}-head-svc", namespace=namespace)
 
         if lb_details:
@@ -404,7 +453,16 @@ class RayHook(KubernetesHook):  # type: ignore
         gpu_device_plugin_yaml: str,
         update_if_exists: bool,
     ) -> None:
-        """Execute the operator to set up the Ray cluster."""
+        """
+        Execute the operator to set up the Ray cluster.
+
+        :param context: The Airflow task context.
+        :param ray_cluster_yaml: Path to the YAML file defining the Ray cluster.
+        :param kuberay_version: Version of KubeRay to install.
+        :param gpu_device_plugin_yaml: Path or URL to the GPU device plugin YAML. Defaults to NVIDIA's plugin
+        :param update_if_exists: Whether to update the cluster if it already exists.
+        :raises AirflowException: If there's an error setting up the Ray cluster.
+        """
         try:
             self._validate_yaml_file(ray_cluster_yaml)
 
@@ -445,7 +503,12 @@ class RayHook(KubernetesHook):  # type: ignore
             raise AirflowException(f"Failed to set up Ray cluster: {e}")
 
     def _delete_ray_cluster_crd(self, ray_cluster_yaml: str) -> None:
-        """Delete the Ray cluster based on the cluster specification."""
+        """
+        Delete the Ray cluster based on the cluster specification.
+
+        :param ray_cluster_yaml: Path to the YAML file defining the Ray cluster.
+        :raises AirflowException: If there's an error deleting the Ray cluster.
+        """
         self.log.info("Loading yaml content for Ray cluster CRD...")
         cluster_spec = self.load_yaml_content(ray_cluster_yaml)
 
@@ -467,7 +530,13 @@ class RayHook(KubernetesHook):  # type: ignore
                 raise AirflowException(f"Error deleting Ray cluster '{name}': {e}")
 
     def delete_ray_cluster(self, ray_cluster_yaml: str, gpu_device_plugin_yaml: str) -> None:
-        """Execute the operator to delete the Ray cluster."""
+        """
+        Execute the operator to delete the Ray cluster.
+
+        :param ray_cluster_yaml: Path to the YAML file defining the Ray cluster.
+        :param gpu_device_plugin_yaml: Path or URL to the GPU device plugin YAML. Defaults to NVIDIA's plugin
+        :raises AirflowException: If there's an error deleting the Ray cluster.
+        """
         try:
             self._validate_yaml_file(ray_cluster_yaml)
 
