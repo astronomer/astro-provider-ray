@@ -346,3 +346,45 @@ class TestSubmitRayJob:
             "ray_cluster_yaml",
             "job_timeout_seconds",
         )
+
+    @patch("ray_provider.operators.ray.RayHook")
+    def test_setup_cluster_exception(self, mock_ray_hook, context):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={},
+            ray_cluster_yaml="cluster.yaml",
+        )
+
+        mock_hook = mock_ray_hook.return_value
+        operator.hook = mock_hook
+
+        mock_hook.setup_ray_cluster.side_effect = Exception("Cluster setup failed")
+
+        with pytest.raises(Exception) as exc_info:
+            operator._setup_cluster(context)
+
+        assert str(exc_info.value) == "Cluster setup failed"
+        mock_hook.setup_ray_cluster.assert_called_once()
+
+    @patch("ray_provider.operators.ray.RayHook")
+    def test_delete_cluster_exception(self, mock_ray_hook):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={},
+            ray_cluster_yaml="cluster.yaml",
+        )
+
+        mock_hook = mock_ray_hook.return_value
+        operator.hook = mock_hook
+
+        mock_hook.delete_ray_cluster.side_effect = Exception("Cluster deletion failed")
+
+        with pytest.raises(Exception) as exc_info:
+            operator._delete_cluster()
+
+        assert str(exc_info.value) == "Cluster deletion failed"
+        mock_hook.delete_ray_cluster.assert_called_once()
