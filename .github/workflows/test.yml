@@ -1,9 +1,9 @@
 name: test
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "aks" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "aks" ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -183,6 +183,7 @@ jobs:
         id: cluster-name
         run: echo "name=test-${GITHUB_RUN_ID:0:12}" >> $GITHUB_OUTPUT
       - name: Create AKS cluster
+        timeout-minutes: 20
         run: |
           az aks create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
@@ -201,6 +202,7 @@ jobs:
             --file kubeconfig.yaml
           echo "KUBECONFIG=${{ github.workspace }}/kubeconfig.yaml" >> $GITHUB_ENV
       - name: Run integration tests
+        timeout-minutes: 30
         run: |
           hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-integration
       - name: Upload coverage to Github
