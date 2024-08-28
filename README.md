@@ -35,65 +35,8 @@ The below example showcases how to use the ``@ray.task`` decorator to manage the
 
 This approach is ideal for jobs that require a dedicated, short-lived cluster, optimizing resource usage by cleaning up after task completion
 
-```python
-from datetime import datetime
-from pathlib import Path
+https://github.com/astronomer/astro-provider-ray/blob/bd6d847818be08fae78bc1e4c9bf3334adb1d2ee/example_dags/ray_taskflow_example.py
 
-from airflow.decorators import dag, task
-
-from ray_provider.decorators.ray import ray
-
-CONN_ID = "ray_conn"
-RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
-FOLDER_PATH = Path(__file__).parent / "ray_scripts"
-RAY_TASK_CONFIG = {
-    "conn_id": CONN_ID,
-    "runtime_env": {"working_dir": str(FOLDER_PATH), "pip": ["numpy"]},
-    "num_cpus": 1,
-    "num_gpus": 0,
-    "memory": 0,
-    "poll_interval": 5,
-    "ray_cluster_yaml": str(RAY_SPEC),
-    "xcom_task_key": "dashboard",
-}
-
-
-@dag(
-    dag_id="Ray_Taskflow_Example",
-    start_date=datetime(2023, 1, 1),
-    schedule=None,
-    catchup=False,
-    tags=["ray", "example"],
-)
-def ray_taskflow_dag():
-
-    @task
-    def generate_data():
-        return [1, 2, 3]
-
-    @ray.task(config=RAY_TASK_CONFIG)
-    def process_data_with_ray(data):
-        import numpy as np
-        import ray
-
-        @ray.remote
-        def square(x):
-            return x**2
-
-        ray.init()
-        data = np.array(data)
-        futures = [square.remote(x) for x in data]
-        results = ray.get(futures)
-        mean = np.mean(results)
-        print(f"Mean of this population is {mean}")
-        return mean
-
-    data = generate_data()
-    process_data_with_ray(data)
-
-
-ray_example_dag = ray_taskflow_dag()
-```
 ### Example 2: Using SetupRayCluster, SubmitRayJob & DeleteRayCluster
 This example shows how to use separate operators for cluster setup, job submission, and teardown, providing more granular control over the process.
 
@@ -107,57 +50,7 @@ Key Points:
 
 This method is ideal for scenarios where you need fine-grained control over the cluster lifecycle, such as running multiple jobs on the same cluster or keeping the cluster alive for a certain period.
 
-```python
-from datetime import datetime
-from pathlib import Path
-
-from airflow import DAG
-
-from ray_provider.operators.ray import DeleteRayCluster, SetupRayCluster, SubmitRayJob
-
-CONN_ID = "ray_conn"
-RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
-FOLDER_PATH = Path(__file__).parent / "ray_scripts"
-
-with DAG(
-    "Setup_Teardown",
-    start_date=datetime(2023, 1, 1),
-    schedule=None,
-    catchup=False,
-    tags=["ray", "example"],
-):
-
-    setup_cluster = SetupRayCluster(
-        task_id="SetupRayCluster",
-        conn_id=CONN_ID,
-        ray_cluster_yaml=str(RAY_SPEC),
-        update_if_exists=False,
-    )
-
-    submit_ray_job = SubmitRayJob(
-        task_id="SubmitRayJob",
-        conn_id=CONN_ID,
-        entrypoint="python script.py",
-        runtime_env={"working_dir": str(FOLDER_PATH)},
-        num_cpus=1,
-        num_gpus=0,
-        memory=0,
-        resources={},
-        fetch_logs=True,
-        wait_for_completion=True,
-        job_timeout_seconds=600,
-        xcom_task_key="SetupRayCluster.dashboard",
-        poll_interval=5,
-    )
-
-    delete_cluster = DeleteRayCluster(
-        task_id="DeleteRayCluster", conn_id=CONN_ID, ray_cluster_yaml=str(RAY_SPEC)
-    )
-
-    # Create ray cluster and submit ray job
-    setup_cluster.as_setup() >> submit_ray_job >> delete_cluster.as_teardown()
-    setup_cluster >> delete_cluster
-```
+https://github.com/astronomer/astro-provider-ray/blob/bd6d847818be08fae78bc1e4c9bf3334adb1d2ee/example_dags/setup-teardown.py
 
 ## Getting Involved
 

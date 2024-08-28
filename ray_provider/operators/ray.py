@@ -229,17 +229,14 @@ class SubmitRayJob(BaseOperator):
         :param context: The context in which the task is being executed.
         :raises Exception: If there's an error during cluster setup.
         """
-        try:
-            if self.ray_cluster_yaml:
-                self.hook.setup_ray_cluster(
-                    context=context,
-                    ray_cluster_yaml=self.ray_cluster_yaml,
-                    kuberay_version=self.kuberay_version,
-                    gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
-                    update_if_exists=self.update_if_exists,
-                )
-        except Exception as e:
-            raise e
+        if self.ray_cluster_yaml:
+            self.hook.setup_ray_cluster(
+                context=context,
+                ray_cluster_yaml=self.ray_cluster_yaml,
+                kuberay_version=self.kuberay_version,
+                gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
+                update_if_exists=self.update_if_exists,
+            )
 
     def _delete_cluster(self) -> None:
         """
@@ -247,14 +244,11 @@ class SubmitRayJob(BaseOperator):
 
         :raises Exception: If there's an error during cluster deletion.
         """
-        try:
-            if self.ray_cluster_yaml:
-                self.hook.delete_ray_cluster(
-                    ray_cluster_yaml=self.ray_cluster_yaml,
-                    gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
-                )
-        except Exception as e:
-            raise e
+        if self.ray_cluster_yaml:
+            self.hook.delete_ray_cluster(
+                ray_cluster_yaml=self.ray_cluster_yaml,
+                gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
+            )
 
     def execute(self, context: Context) -> str:
         """
