@@ -35,7 +35,7 @@ The below example showcases how to use the ``@ray.task`` decorator to manage the
 
 This approach is ideal for jobs that require a dedicated, short-lived cluster, optimizing resource usage by cleaning up after task completion
 
-https://github.com/astronomer/astro-provider-ray/blob/bd6d847818be08fae78bc1e4c9bf3334adb1d2ee/example_dags/ray_taskflow_example.py
+https://github.com/astronomer/astro-provider-ray/blob/bd6d847818be08fae78bc1e4c9bf3334adb1d2ee/example_dags/ray_taskflow_example.py#L1-L57
 
 ### Example 2: Using SetupRayCluster, SubmitRayJob & DeleteRayCluster
 This example shows how to use separate operators for cluster setup, job submission, and teardown, providing more granular control over the process.
@@ -50,7 +50,7 @@ Key Points:
 
 This method is ideal for scenarios where you need fine-grained control over the cluster lifecycle, such as running multiple jobs on the same cluster or keeping the cluster alive for a certain period.
 
-https://github.com/astronomer/astro-provider-ray/blob/bd6d847818be08fae78bc1e4c9bf3334adb1d2ee/example_dags/setup-teardown.py
+https://github.com/astronomer/astro-provider-ray/blob/bd6d847818be08fae78bc1e4c9bf3334adb1d2ee/example_dags/setup-teardown.py#L1-L44
 
 ## Getting Involved
 
