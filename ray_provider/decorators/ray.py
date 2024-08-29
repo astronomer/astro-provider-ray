@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import inspect
 import os
+import re
 import shutil
 import textwrap
 from tempfile import mkdtemp
@@ -27,7 +29,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
     custom_operator_name = "@task.ray"
 
-    template_fields: Any = (*DecoratedOperator.template_fields, *SubmitRayJob.template_fields)
+    template_fields: Any = (*SubmitRayJob.template_fields, "op_args", "op_kwargs")
 
     def __init__(self, config: dict[str, Any], **kwargs: Any) -> None:
         self.conn_id: str = config.get("conn_id", "")
@@ -39,6 +41,13 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         self.num_gpus: int | float = config.get("num_gpus", 0)
         self.memory: int | float = config.get("memory", None)
         self.ray_resources: dict[str, Any] | None = config.get("resources", None)
+        self.ray_cluster_yaml: str | None = config.get("ray_cluster_yaml", None)
+        self.update_if_exists: bool = config.get("update_if_exists", False)
+        self.kuberay_version: str = config.get("kuberay_version", "1.0.0")
+        self.gpu_device_plugin_yaml: str = config.get(
+            "gpu_device_plugin_yaml",
+            "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
+        )
         self.fetch_logs: bool = config.get("fetch_logs", True)
         self.wait_for_completion: bool = config.get("wait_for_completion", True)
         self.job_timeout_seconds: int = config.get("job_timeout_seconds", 600)
@@ -59,6 +68,10 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
             num_gpus=self.num_gpus,
             memory=self.memory,
             resources=self.ray_resources,
+            ray_cluster_yaml=self.ray_cluster_yaml,
+            update_if_exists=self.update_if_exists,
+            kuberay_version=self.kuberay_version,
+            gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
             fetch_logs=self.fetch_logs,
             wait_for_completion=self.wait_for_completion,
             job_timeout_seconds=self.job_timeout_seconds,
@@ -81,22 +94,33 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
                 self.log.info(
                     f"Entrypoint is not provided, is_decorated_function is set to {self.is_decorated_function}"
                 )
-                tmp_dir = mkdtemp(prefix="ray_")
-                py_source = self.get_python_source().splitlines()  # type: ignore
-                function_body = textwrap.dedent("\n".join(py_source))
+                # Create a temporary directory that won't be immediately deleted
+                temp_dir = mkdtemp(prefix="ray_")
+                script_filename = os.path.join(temp_dir, "script.py")
 
-                script_filename = os.path.join(tmp_dir, "script.py")
+                # Get the Python source code and extract just the function body
+                full_source = inspect.getsource(self.python_callable)
+                function_body = self._extract_function_body(full_source)
+                if not function_body:
+                    raise ValueError("Failed to retrieve Python source code")
+
+                # Prepare the function call
+                args_str = ", ".join(repr(arg) for arg in self.op_args)
+                kwargs_str = ", ".join(f"{k}={repr(v)}" for k, v in self.op_kwargs.items())
+                call_str = f"{self.python_callable.__name__}({args_str}, {kwargs_str})"
+
+                # Write the script with function definition and call
                 with open(script_filename, "w") as file:
-                    all_args_str = self._build_args_str()
-                    script_body = f"{function_body}\n{self._extract_function_name()}({all_args_str})"
-                    file.write(script_body)
+                    file.write(function_body)
+                    file.write(f"\n\n# Execute the function\n{call_str}\n")
 
-                self.entrypoint = "python script.py"
-                self.runtime_env["working_dir"] = tmp_dir
+                # Set up Ray job
+                self.entrypoint = f"python {os.path.basename(script_filename)}"
+                self.runtime_env["working_dir"] = temp_dir
 
             self.log.info("Running ray job...")
-
             result = super().execute(context)
+
             return result
         except Exception as e:
             self.log.error(f"Failed during execution with error: {e}")
@@ -105,23 +129,16 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
             if tmp_dir and os.path.exists(tmp_dir):
                 shutil.rmtree(tmp_dir)
 
-    def _build_args_str(self) -> str:
-        """
-        Build the argument string for the function call.
+    def _extract_function_body(self, source: str) -> str:
+        """Extract the function, excluding only the ray.task decorator."""
+        lines = source.split("\n")
+        # Find the line where the ray.task decorator is
+        ray_task_line = next((i for i, line in enumerate(lines) if re.match(r"^\s*@ray\.task", line.strip())), -1)
 
-        :return: A string representation of the function arguments.
-        """
-        args_str = ", ".join(repr(arg) for arg in self.op_args)
-        kwargs_str = ", ".join(f"{k}={repr(v)}" for k, v in self.op_kwargs.items())
-        return f"{args_str}, {kwargs_str}" if args_str and kwargs_str else args_str or kwargs_str
-
-    def _extract_function_name(self) -> str:
-        """
-        Extract the name of the Python callable.
-
-        :return: The name of the Python callable.
-        """
-        return self.python_callable.__name__
+        # Include everything except the ray.task decorator line
+        body = "\n".join(lines[:ray_task_line] + lines[ray_task_line + 1 :])
+        # Dedent the body
+        return textwrap.dedent(body)
 
 
 class ray:
