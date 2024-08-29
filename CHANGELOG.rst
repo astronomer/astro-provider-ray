@@ -4,6 +4,8 @@ CHANGELOG
 0.2.0 (2024-08-29)
 ------------------
 
+by @venkatajagannath in #50
+
 **Breaking changes**
 
 - We removed the "use_gpu" input parameter from the SetupRayCluster and DeleteRayCluster operators. GPU drivers get installed if GPU nodes are available
