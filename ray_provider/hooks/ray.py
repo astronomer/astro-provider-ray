@@ -477,7 +477,7 @@ class RayHook(KubernetesHook):  # type: ignore
             kind = cluster_spec["kind"]
             plural = f"{kind.lower()}s" if kind == "RayCluster" else kind
             name = cluster_spec["metadata"]["name"]
-            namespace = self.get_namespace()
+            namespace = self.namespace
             api_version = cluster_spec["apiVersion"]
             group, version = api_version.split("/") if "/" in api_version else ("", api_version)
 
@@ -515,7 +515,7 @@ class RayHook(KubernetesHook):  # type: ignore
         kind = cluster_spec["kind"]
         plural = f"{kind.lower()}s" if kind == "RayCluster" else kind
         name = cluster_spec["metadata"]["name"]
-        namespace = self.get_namespace()
+        namespace = self.namespace
         api_version = cluster_spec["apiVersion"]
         group, version = api_version.split("/") if "/" in api_version else ("", api_version)
 
