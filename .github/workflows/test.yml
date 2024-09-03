@@ -66,6 +66,7 @@ jobs:
         with:
           name: coverage-unit-test-${{ matrix.python-version }}-${{ matrix.airflow-version }}
           path: .coverage
+          include-hidden-files: true
 
   Run-Integration-Tests:
     needs: Authorize
@@ -139,6 +140,7 @@ jobs:
         with:
           name: coverage-integration-test-${{ matrix.python-version }}-${{ matrix.airflow-version }}
           path: .coverage
+          include-hidden-files: true
       - name: Delete GKE cluster
         if: always()
         run: |
