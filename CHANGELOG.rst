@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+0.2.1 (2024-09-04)
+------------------
+
+**Bug fixes**
+Namespace variable initialized in init method is not used in setup_ray_cluster and delete_ray_cluster methods
+CI/CD pipeline broken due to sudden github action breaking change
+
+
+
 0.2.0 (2024-08-29)
 ------------------
 
