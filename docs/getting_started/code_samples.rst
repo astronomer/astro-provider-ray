@@ -41,6 +41,9 @@ The below example showcases how to use the ``@ray.task`` decorator to manage the
 
 This approach is ideal for jobs that require a dedicated, short-lived cluster, optimizing resource usage by cleaning up after task completion.
 
+.. note::
+   Configuration can be specified as a dictionary, either statically or dynamically at runtime as needed.
+
 .. literalinclude:: ../../example_dags/ray_taskflow_example.py
    :language: python
    :linenos:

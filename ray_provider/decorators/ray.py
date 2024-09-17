@@ -146,19 +146,28 @@ class ray:
     def task(
         python_callable: Callable[..., Any] | None = None,
         multiple_outputs: bool | None = None,
+        config: Callable[[], dict[str, Any]] | dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TaskDecorator:
         """
         Decorator to define a task that submits a Ray job.
-
         :param python_callable: The callable function to decorate.
         :param multiple_outputs: If True, will return multiple outputs.
+        :param config: A dictionary of configuration or a callable that returns a dictionary.
         :param kwargs: Additional keyword arguments.
         :return: The decorated task.
         """
+        if config is None:
+            config = {}
+        elif callable(config):
+            config = config()
+        elif not isinstance(config, dict):
+            raise TypeError("config must be either a callable, a dictionary, or None")
+
         return task_decorator_factory(
             python_callable=python_callable,
             multiple_outputs=multiple_outputs,
             decorated_operator_class=_RayDecoratedOperator,
+            config=config,
             **kwargs,
         )
