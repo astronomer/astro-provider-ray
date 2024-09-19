@@ -78,25 +78,20 @@ class RayJobTrigger(BaseTrigger):
         This will be called when the trigger is no longer needed.
         """
         try:
-            self.log.info(f"Cleaning up resources for job {self.job_id}")
-            if hasattr(self, "hook") and self.job_id:
-                self.hook.delete_ray_job(self.dashboard_url, self.job_id)
-            self._delete_cluster()
+            if self.ray_cluster_yaml:
+                self.log.info(f"Attempting to delete Ray cluster using YAML: {self.ray_cluster_yaml}")
+                try:
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(
+                        None, self.hook.delete_ray_cluster, self.ray_cluster_yaml, self.gpu_device_plugin_yaml
+                    )
+                    self.log.info("Ray cluster deletion process completed")
+                except Exception as cluster_error:
+                    self.log.error(f"Failed to delete Ray cluster: {str(cluster_error)}")
+            else:
+                self.log.info("No Ray cluster YAML provided, skipping cluster deletion")
         except Exception as e:
-            self.log.error(f"Error during cleanup: {str(e)}")
-
-    def _delete_cluster(self) -> None:
-        """
-        Delete the Ray cluster if a cluster YAML is provided.
-        """
-        if self.ray_cluster_yaml:
-            self.log.info(f"Deleting Ray cluster using YAML: {self.ray_cluster_yaml}")
-            self.hook.delete_ray_cluster(
-                ray_cluster_yaml=self.ray_cluster_yaml,
-                gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
-            )
-        else:
-            self.log.info("No Ray cluster YAML provided, skipping cluster deletion")
+            self.log.error(f"Unexpected error during cleanup: {str(e)}")
 
     async def _poll_status(self) -> None:
         while not self._is_terminal_state():
