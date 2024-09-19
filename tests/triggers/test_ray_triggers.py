@@ -14,6 +14,8 @@ class TestRayJobTrigger:
             job_id="test_job_id",
             conn_id="test_conn",
             xcom_dashboard_url="http://test-dashboard.com",
+            ray_cluster_yaml="test.yaml",
+            gpu_device_plugin_yaml="nvidia.yaml",
             poll_interval=1,
             fetch_logs=True,
         )
@@ -24,7 +26,14 @@ class TestRayJobTrigger:
     async def test_run_no_job_id(self, mock_hook, mock_is_terminal):
         mock_is_terminal.return_value = True
         mock_hook.get_ray_job_status.return_value = JobStatus.FAILED
-        trigger = RayJobTrigger(job_id="", poll_interval=1, conn_id="test", xcom_dashboard_url="test")
+        trigger = RayJobTrigger(
+            job_id="",
+            poll_interval=1,
+            conn_id="test",
+            xcom_dashboard_url="test",
+            ray_cluster_yaml="test.yaml",
+            gpu_device_plugin_yaml="nvidia.yaml",
+        )
         generator = trigger.run()
         event = await generator.asend(None)
         assert event == TriggerEvent(
@@ -37,7 +46,14 @@ class TestRayJobTrigger:
     async def test_run_job_succeeded(self, mock_hook, mock_is_terminal):
         mock_is_terminal.side_effect = [False, True]
         mock_hook.get_ray_job_status.return_value = JobStatus.SUCCEEDED
-        trigger = RayJobTrigger(job_id="test_job_id", poll_interval=1, conn_id="test", xcom_dashboard_url="test")
+        trigger = RayJobTrigger(
+            job_id="test_job_id",
+            poll_interval=1,
+            conn_id="test",
+            xcom_dashboard_url="test",
+            ray_cluster_yaml="test.yaml",
+            gpu_device_plugin_yaml="nvidia.yaml",
+        )
         generator = trigger.run()
         event = await generator.asend(None)
         assert event == TriggerEvent(
@@ -149,6 +165,8 @@ class TestRayJobTrigger:
                 "job_id": "test_job_id",
                 "conn_id": "test_conn",
                 "xcom_dashboard_url": "http://test-dashboard.com",
+                "ray_cluster_yaml": "test.yaml",
+                "gpu_device_plugin_yaml": "nvidia.yaml",
                 "fetch_logs": True,
                 "poll_interval": 1,
             },

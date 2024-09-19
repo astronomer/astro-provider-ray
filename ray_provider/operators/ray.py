@@ -175,6 +175,19 @@ class SubmitRayJob(BaseOperator):
         self.job_id = ""
         self.terminal_states = {JobStatus.SUCCEEDED, JobStatus.STOPPED, JobStatus.FAILED}
 
+        self.on_failure_callback = self._on_failure_callback
+        self.on_success_callback = self._on_success_callback
+
+    def _on_failure_callback(self, context: Context) -> None:
+        """Callback for task failure."""
+        self.log.info("Executing failure callback")
+        self._delete_cluster()
+
+    def _on_success_callback(self, context: Context) -> None:
+        """Callback for task success."""
+        self.log.info("Executing success callback")
+        self._delete_cluster()
+
     def on_kill(self) -> None:
         """
         Delete the Ray job if the task is killed.
@@ -288,6 +301,8 @@ class SubmitRayJob(BaseOperator):
                         job_id=self.job_id,
                         conn_id=self.conn_id,
                         xcom_dashboard_url=self.dashboard_url,
+                        ray_cluster_yaml=self.ray_cluster_yaml,
+                        gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
                         poll_interval=self.poll_interval,
                         fetch_logs=self.fetch_logs,
                     ),
