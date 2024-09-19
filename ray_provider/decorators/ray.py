@@ -160,7 +160,7 @@ class ray:
         if config is None:
             config = {}
         elif callable(config):
-            config = config()
+            config = config(**kwargs)
         elif not isinstance(config, dict):
             raise TypeError("config must be either a callable, a dictionary, or None")
 
