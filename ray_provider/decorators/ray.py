@@ -88,7 +88,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         :return: The result of the Ray job execution.
         :raises AirflowException: If job submission fails.
         """
-        tmp_dir = None
+        temp_dir = None
         try:
             if self.is_decorated_function:
                 self.log.info(
@@ -126,8 +126,8 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
             self.log.error(f"Failed during execution with error: {e}")
             raise AirflowException("Job submission failed") from e
         finally:
-            if tmp_dir and os.path.exists(tmp_dir):
-                shutil.rmtree(tmp_dir)
+            if temp_dir and os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
 
     def _extract_function_body(self, source: str) -> str:
         """Extract the function, excluding only the ray.task decorator."""
@@ -169,5 +169,4 @@ class ray:
             multiple_outputs=multiple_outputs,
             decorated_operator_class=_RayDecoratedOperator,
             config=config,
-            **kwargs,
         )
