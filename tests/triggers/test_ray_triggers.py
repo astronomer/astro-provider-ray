@@ -1,4 +1,5 @@
-from unittest.mock import patch
+import logging
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 from airflow.triggers.base import TriggerEvent
@@ -122,23 +123,6 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
-    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
-    async def test_run_with_exception(self, mock_hook, mock_is_terminal, trigger):
-        mock_is_terminal.side_effect = Exception("Test exception")
-
-        generator = trigger.run()
-        event = await generator.asend(None)
-
-        assert event == TriggerEvent(
-            {
-                "status": str(JobStatus.FAILED),
-                "message": "Test exception",
-                "job_id": "test_job_id",
-            }
-        )
-
-    @pytest.mark.asyncio
     @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
     async def test_stream_logs(self, mock_hook, trigger):
         # Create a mock async iterator
@@ -184,3 +168,74 @@ class TestRayJobTrigger:
         assert not trigger._is_terminal_state()
         assert not trigger._is_terminal_state()
         assert trigger._is_terminal_state()
+
+    @pytest.mark.asyncio
+    @patch.object(RayJobTrigger, "hook")
+    @patch.object(logging.Logger, "info")
+    async def test_cleanup_with_cluster_yaml(self, mock_log_info, mock_hook, trigger):
+        await trigger.cleanup()
+
+        mock_log_info.assert_has_calls(
+            [
+                call("Attempting to delete Ray cluster using YAML: test.yaml"),
+                call("Ray cluster deletion process completed"),
+            ]
+        )
+        mock_hook.delete_ray_cluster.assert_called_once_with("test.yaml", "nvidia.yaml")
+
+    @pytest.mark.asyncio
+    @patch.object(logging.Logger, "info")
+    async def test_cleanup_without_cluster_yaml(self, mock_log_info):
+        trigger = RayJobTrigger(
+            job_id="test_job_id",
+            conn_id="test_conn",
+            xcom_dashboard_url="http://test-dashboard.com",
+            ray_cluster_yaml=None,
+            gpu_device_plugin_yaml="nvidia.yaml",
+            poll_interval=1,
+            fetch_logs=True,
+        )
+
+        await trigger.cleanup()
+
+        mock_log_info.assert_called_once_with("No Ray cluster YAML provided, skipping cluster deletion")
+
+    @pytest.mark.asyncio
+    @patch.object(RayJobTrigger, "hook")
+    @patch.object(logging.Logger, "error")
+    async def test_cleanup_with_exception(self, mock_log_error, mock_hook, trigger):
+        mock_hook.delete_ray_cluster.side_effect = Exception("Test exception")
+
+        await trigger.cleanup()
+
+        mock_log_error.assert_called_once_with("Unexpected error during cleanup: Test exception")
+
+    @pytest.mark.asyncio
+    @patch("asyncio.sleep", new_callable=AsyncMock)
+    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
+    async def test_poll_status(self, mock_is_terminal, mock_sleep, trigger):
+        mock_is_terminal.side_effect = [False, False, True]
+
+        await trigger._poll_status()
+
+        assert mock_sleep.call_count == 2
+        mock_sleep.assert_called_with(1)
+
+    @pytest.mark.asyncio
+    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    @patch("ray_provider.triggers.ray.RayJobTrigger.cleanup")
+    async def test_run_with_exception(self, mock_cleanup, mock_hook, mock_is_terminal, trigger):
+        mock_is_terminal.side_effect = Exception("Test exception")
+
+        generator = trigger.run()
+        event = await generator.asend(None)
+
+        assert event == TriggerEvent(
+            {
+                "status": str(JobStatus.FAILED),
+                "message": "Test exception",
+                "job_id": "test_job_id",
+            }
+        )
+        mock_cleanup.assert_called_once()

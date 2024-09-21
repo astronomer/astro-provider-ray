@@ -1,10 +1,11 @@
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from airflow.exceptions import AirflowException
+from airflow.exceptions import AirflowException, TaskDeferred
 from ray.job_submission import JobStatus
 
 from ray_provider.operators.ray import DeleteRayCluster, SetupRayCluster, SubmitRayJob
+from ray_provider.triggers.ray import RayJobTrigger
 
 
 class TestSetupRayCluster:
@@ -388,3 +389,96 @@ class TestSubmitRayJob:
 
         assert str(exc_info.value) == "Cluster deletion failed"
         mock_hook.delete_ray_cluster.assert_called_once()
+
+    def test_on_failure_callback(self, operator):
+        context = Mock()
+        with patch.object(operator, "_delete_cluster") as mock_delete_cluster:
+            operator._on_failure_callback(context)
+            mock_delete_cluster.assert_called_once()
+
+    def test_on_success_callback(self, operator):
+        context = Mock()
+        with patch.object(operator, "_delete_cluster") as mock_delete_cluster:
+            operator._on_success_callback(context)
+            mock_delete_cluster.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "xcom_task_key, expected_task, expected_key",
+        [
+            ("task.key", "task", "key"),
+            ("single_key", None, "single_key"),
+        ],
+    )
+    def test_get_dashboard_url_xcom_variants(self, operator, context, xcom_task_key, expected_task, expected_key):
+        operator.xcom_task_key = xcom_task_key
+        context["ti"].xcom_pull.return_value = "http://dashboard.url"
+
+        result = operator._get_dashboard_url(context)
+
+        assert result == "http://dashboard.url"
+        if expected_task:
+            context["ti"].xcom_pull.assert_called_once_with(task_ids=expected_task, key=expected_key)
+        else:
+            context["ti"].xcom_pull.assert_called_once_with(task_ids=context["task"].task_id, key=expected_key)
+
+    def test_execute_job_unexpected_state(self, mock_hook, context):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={},
+            wait_for_completion=True,
+        )
+        mock_hook.submit_ray_job.return_value = "test_job_id"
+        mock_hook.get_ray_job_status.return_value = "UNEXPECTED_STATE"
+
+        with patch.object(operator, "_setup_cluster"), pytest.raises(TaskDeferred) as exc_info:
+            operator.execute(context)
+
+        assert isinstance(exc_info.value.trigger, RayJobTrigger)
+
+    @pytest.mark.parametrize("dashboard_url", [None, "http://dashboard.url"])
+    def test_execute_defer(self, mock_hook, context, dashboard_url):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={},
+            wait_for_completion=True,
+            ray_cluster_yaml="cluster.yaml",
+            gpu_device_plugin_yaml="gpu_plugin.yaml",
+            poll_interval=30,
+            fetch_logs=True,
+            job_timeout_seconds=600,
+        )
+        mock_hook.submit_ray_job.return_value = "test_job_id"
+        mock_hook.get_ray_job_status.return_value = JobStatus.PENDING
+
+        with patch.object(operator, "_setup_cluster"), patch.object(
+            operator, "_get_dashboard_url", return_value=dashboard_url
+        ), pytest.raises(TaskDeferred) as exc_info:
+            operator.execute(context)
+
+        trigger = exc_info.value.trigger
+        assert isinstance(trigger, RayJobTrigger)
+        assert trigger.job_id == "test_job_id"
+        assert trigger.conn_id == "test_conn"
+        assert trigger.dashboard_url == dashboard_url
+        assert trigger.ray_cluster_yaml == "cluster.yaml"
+        assert trigger.gpu_device_plugin_yaml == "gpu_plugin.yaml"
+        assert trigger.poll_interval == 30
+        assert trigger.fetch_logs is True
+
+    def test_execute_complete_unexpected_status(self, operator):
+        event = {"status": "UNEXPECTED", "message": "Unexpected status"}
+        with patch.object(operator, "_delete_cluster"), pytest.raises(AirflowException) as exc_info:
+            operator.execute_complete({}, event)
+
+        assert "Unexpected event status" in str(exc_info.value)
+
+    def test_execute_complete_cleanup_on_exception(self, operator):
+        event = {"status": JobStatus.FAILED, "message": "Job failed"}
+        with patch.object(operator, "_delete_cluster") as mock_delete_cluster, pytest.raises(AirflowException):
+            operator.execute_complete({}, event)
+
+        mock_delete_cluster.assert_called_once()

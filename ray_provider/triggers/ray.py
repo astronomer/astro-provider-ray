@@ -75,19 +75,16 @@ class RayJobTrigger(BaseTrigger):
     async def cleanup(self) -> None:
         """
         Cleanup method to ensure resources are properly released.
-        This will be called when the trigger is no longer needed.
+        This will be called when the trigger encounters an exception.
         """
         try:
             if self.ray_cluster_yaml:
                 self.log.info(f"Attempting to delete Ray cluster using YAML: {self.ray_cluster_yaml}")
-                try:
-                    loop = asyncio.get_running_loop()
-                    await loop.run_in_executor(
-                        None, self.hook.delete_ray_cluster, self.ray_cluster_yaml, self.gpu_device_plugin_yaml
-                    )
-                    self.log.info("Ray cluster deletion process completed")
-                except Exception as cluster_error:
-                    self.log.error(f"Failed to delete Ray cluster: {str(cluster_error)}")
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(
+                    None, self.hook.delete_ray_cluster, self.ray_cluster_yaml, self.gpu_device_plugin_yaml
+                )
+                self.log.info("Ray cluster deletion process completed")
             else:
                 self.log.info("No Ray cluster YAML provided, skipping cluster deletion")
         except Exception as e:
@@ -135,11 +132,6 @@ class RayJobTrigger(BaseTrigger):
                     "job_id": self.job_id,
                 }
             )
-
-        except asyncio.CancelledError:
-            self.log.info(f"Trigger for job {self.job_id} was cancelled")
-            await self.cleanup()
-            raise
         except Exception as e:
             self.log.error(f"Error occurred: {str(e)}")
             await self.cleanup()
