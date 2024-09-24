@@ -390,18 +390,6 @@ class TestSubmitRayJob:
         assert str(exc_info.value) == "Cluster deletion failed"
         mock_hook.delete_ray_cluster.assert_called_once()
 
-    def test_on_failure_callback(self, operator):
-        context = Mock()
-        with patch.object(operator, "_delete_cluster") as mock_delete_cluster:
-            operator._on_failure_callback(context)
-            mock_delete_cluster.assert_called_once()
-
-    def test_on_success_callback(self, operator):
-        context = Mock()
-        with patch.object(operator, "_delete_cluster") as mock_delete_cluster:
-            operator._on_success_callback(context)
-            mock_delete_cluster.assert_called_once()
-
     @pytest.mark.parametrize(
         "xcom_task_key, expected_task, expected_key",
         [
@@ -482,3 +470,101 @@ class TestSubmitRayJob:
             operator.execute_complete({}, event)
 
         mock_delete_cluster.assert_called_once()
+
+    def test_execute_exception_handling(self, mock_hook, context):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={},
+            ray_cluster_yaml="cluster.yaml",
+        )
+
+        mock_hook.submit_ray_job.side_effect = Exception("Job submission failed")
+
+        with patch.object(operator, "_setup_cluster"), patch.object(
+            operator, "_delete_cluster"
+        ) as mock_delete_cluster, pytest.raises(AirflowException) as exc_info:
+            operator.execute(context)
+
+        assert "SubmitRayJob operator failed due to Job submission failed" in str(exc_info.value)
+        mock_delete_cluster.assert_called_once()
+
+    def test_execute_cluster_setup_exception(self, mock_hook, context):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={},
+            ray_cluster_yaml="cluster.yaml",
+        )
+
+        with patch.object(operator, "_setup_cluster", side_effect=Exception("Cluster setup failed")), patch.object(
+            operator, "_delete_cluster"
+        ) as mock_delete_cluster, pytest.raises(AirflowException) as exc_info:
+            operator.execute(context)
+
+        assert "SubmitRayJob operator failed due to Cluster setup failed" in str(exc_info.value)
+        mock_delete_cluster.assert_called_once()
+
+    def test_execute_with_wait_and_defer(self, mock_hook, context):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={},
+            wait_for_completion=True,
+            poll_interval=30,
+            fetch_logs=True,
+            job_timeout_seconds=600,
+        )
+
+        mock_hook.submit_ray_job.return_value = "test_job_id"
+        mock_hook.get_ray_job_status.return_value = JobStatus.PENDING
+
+        with patch.object(operator, "_setup_cluster"), patch.object(operator, "defer") as mock_defer:
+            operator.execute(context)
+
+            mock_defer.assert_called_once()
+            args, kwargs = mock_defer.call_args
+            assert isinstance(kwargs["trigger"], RayJobTrigger)
+            assert kwargs["method_name"] == "execute_complete"
+            assert kwargs["timeout"].total_seconds() == 600
+
+    def test_execute_complete_with_cleanup(self, operator):
+        operator.job_id = "test_job_id"
+        event = {"status": JobStatus.FAILED, "message": "Job failed"}
+
+        with patch.object(operator, "_delete_cluster") as mock_delete_cluster, pytest.raises(AirflowException):
+            operator.execute_complete({}, event)
+
+        mock_delete_cluster.assert_called_once()
+
+    def test_execute_without_wait_no_cleanup(self, mock_hook, context):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={},
+            wait_for_completion=False,
+        )
+
+        mock_hook.submit_ray_job.return_value = "test_job_id"
+
+        with patch.object(operator, "_setup_cluster") as mock_setup_cluster, patch.object(
+            operator, "_delete_cluster"
+        ) as mock_delete_cluster:
+            result = operator.execute(context)
+
+            mock_setup_cluster.assert_called_once_with(context=context)
+            assert result == "test_job_id"
+            mock_hook.submit_ray_job.assert_called_once_with(
+                dashboard_url=None,
+                entrypoint="python script.py",
+                runtime_env={},
+                entrypoint_num_cpus=0,
+                entrypoint_num_gpus=0,
+                entrypoint_memory=0,
+                entrypoint_resources=None,
+            )
+            mock_delete_cluster.assert_not_called()
