@@ -15,7 +15,7 @@ The below steps are useful if you have your Kubernetes cluster hosted on AWS EKS
 
 Or add the package to your requirements.txt file. For other methods to install the CLI, please see `here <https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html>`_
 
-**2. Ensure that you are able to authenticate with AWS**
+**2. Authenticate with AWS**
 
 .. code-block:: sh
 
@@ -40,15 +40,7 @@ For other installation methods, please refer to the `Azure CLI installation guid
 
 **2. Authenticate with Azure**
 
-To authenticate the Airflow worker with Azure, you can use one of the following methods:
-
-a. Interactive login:
-
-.. code-block:: sh
-
-    az login
-
-b. Service principal authentication:
+To authenticate the Airflow worker with Azure, get the below details from your k8 cluster's service principal:
 
 .. code-block:: sh
 
@@ -59,7 +51,6 @@ b. Service principal authentication:
 Replace ``<app-id>``, ``<password-or-cert>``, and ``<tenant>`` with your specific Azure credentials.
 
 For more authentication options, see the `Azure authentication guide <https://docs.microsoft.com/en-us/cli/azure/authenticate-azure-cli>`_.
-
 
 Google Cloud Platform (GCP)
 ---------------------------
