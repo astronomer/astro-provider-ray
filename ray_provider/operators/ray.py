@@ -292,7 +292,7 @@ class SubmitRayJob(BaseOperator):
                         fetch_logs=self.fetch_logs,
                     ),
                     method_name="execute_complete",
-                    timeout=timedelta(seconds=self.job_timeout_seconds),
+                    timeout=timedelta(seconds=self.job_timeout_seconds) if self.job_timeout_seconds > 0 else None,
                 )
             elif current_status == JobStatus.SUCCEEDED:
                 self.log.info("Job %s completed successfully", self.job_id)
