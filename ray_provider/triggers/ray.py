@@ -74,8 +74,12 @@ class RayJobTrigger(BaseTrigger):
 
     async def cleanup(self) -> None:
         """
-        Cleanup method to ensure resources are properly released.
-        This will be called when the trigger encounters an exception.
+        Cleanup method to ensure resources are properly deleted. This will be called when the trigger encounters an exception.
+
+        Example scenario: A job is submitted using the @ray.task decorator with a Ray specification. After the cluster is started
+        and the job is submitted, the trigger begins tracking its progress. However, if the job is stopped through the UI at this stage, the cluster
+        resources are not deleted.
+
         """
         try:
             if self.ray_cluster_yaml:
