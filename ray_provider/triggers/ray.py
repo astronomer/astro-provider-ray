@@ -30,6 +30,8 @@ class RayJobTrigger(BaseTrigger):
         job_id: str,
         conn_id: str,
         xcom_dashboard_url: str | None,
+        ray_cluster_yaml: str | None,
+        gpu_device_plugin_yaml: str,
         poll_interval: int = 30,
         fetch_logs: bool = True,
     ):
@@ -37,6 +39,8 @@ class RayJobTrigger(BaseTrigger):
         self.job_id = job_id
         self.conn_id = conn_id
         self.dashboard_url = xcom_dashboard_url
+        self.ray_cluster_yaml = ray_cluster_yaml
+        self.gpu_device_plugin_yaml = gpu_device_plugin_yaml
         self.fetch_logs = fetch_logs
         self.poll_interval = poll_interval
 
@@ -52,6 +56,8 @@ class RayJobTrigger(BaseTrigger):
                 "job_id": self.job_id,
                 "conn_id": self.conn_id,
                 "xcom_dashboard_url": self.dashboard_url,
+                "ray_cluster_yaml": self.ray_cluster_yaml,
+                "gpu_device_plugin_yaml": self.gpu_device_plugin_yaml,
                 "fetch_logs": self.fetch_logs,
                 "poll_interval": self.poll_interval,
             },
@@ -65,6 +71,28 @@ class RayJobTrigger(BaseTrigger):
         :return: An instance of RayHook configured with the connection ID and dashboard URL.
         """
         return RayHook(conn_id=self.conn_id)
+
+    async def cleanup(self) -> None:
+        """
+        Cleanup method to ensure resources are properly deleted. This will be called when the trigger encounters an exception.
+
+        Example scenario: A job is submitted using the @ray.task decorator with a Ray specification. After the cluster is started
+        and the job is submitted, the trigger begins tracking its progress. However, if the job is stopped through the UI at this stage, the cluster
+        resources are not deleted.
+
+        """
+        try:
+            if self.ray_cluster_yaml:
+                self.log.info(f"Attempting to delete Ray cluster using YAML: {self.ray_cluster_yaml}")
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(
+                    None, self.hook.delete_ray_cluster, self.ray_cluster_yaml, self.gpu_device_plugin_yaml
+                )
+                self.log.info("Ray cluster deletion process completed")
+            else:
+                self.log.info("No Ray cluster YAML provided, skipping cluster deletion")
+        except Exception as e:
+            self.log.error(f"Unexpected error during cleanup: {str(e)}")
 
     async def _poll_status(self) -> None:
         while not self._is_terminal_state():
@@ -109,6 +137,8 @@ class RayJobTrigger(BaseTrigger):
                 }
             )
         except Exception as e:
+            self.log.error(f"Error occurred: {str(e)}")
+            await self.cleanup()
             yield TriggerEvent({"status": str(JobStatus.FAILED), "message": str(e), "job_id": self.job_id})
 
     def _is_terminal_state(self) -> bool:
