@@ -31,7 +31,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
     template_fields: Any = (*SubmitRayJob.template_fields, "op_args", "op_kwargs")
 
-    def __init__(self, config: dict[str, Any] | Callable[[Context], dict[str, Any]], **kwargs: Any) -> None:
+    def __init__(self, config: dict[str, Any] | Callable[..., dict[str, Any]], **kwargs: Any) -> None:
 
         self.config = config
         self.kwargs = kwargs
