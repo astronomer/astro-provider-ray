@@ -283,7 +283,7 @@ class SubmitRayJob(BaseOperator):
 
                 if isinstance(self.job_timeout_seconds, timedelta):
                     job_timeout_seconds = self.job_timeout_seconds
-                else:
+                elif self.job_timeout_seconds is not None:
                     job_timeout_seconds = timedelta(seconds=self.job_timeout_seconds) if self.job_timeout_seconds > 0 else None
 
                 if current_status not in self.terminal_states:
