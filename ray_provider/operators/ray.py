@@ -281,10 +281,8 @@ class SubmitRayJob(BaseOperator):
                 current_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
                 self.log.info(f"Current job status for {self.job_id} is: {current_status}")
 
-                job_timeout_seconds = timedelta(seconds=0)
-                if isinstance(self.job_timeout_seconds, timedelta):
-                    job_timeout_seconds = self.job_timeout_seconds
-                elif self.job_timeout_seconds is not None:
+                job_timeout_seconds = self.job_timeout_seconds
+                if isinstance(self.job_timeout_seconds, int):
                     job_timeout_seconds = timedelta(seconds=self.job_timeout_seconds) if self.job_timeout_seconds > 0 else None
 
                 if current_status not in self.terminal_states:
