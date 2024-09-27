@@ -50,7 +50,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         )
         self.fetch_logs: bool = config.get("fetch_logs", True)
         self.wait_for_completion: bool = config.get("wait_for_completion", True)
-        self.job_timeout_seconds: int = config.get("job_timeout_seconds", 600)
+        job_timeout_seconds: int = config.get("job_timeout_seconds", 600)
         self.poll_interval: int = config.get("poll_interval", 60)
         self.xcom_task_key: str | None = config.get("xcom_task_key", None)
         self.config = config
@@ -74,7 +74,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
             gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
             fetch_logs=self.fetch_logs,
             wait_for_completion=self.wait_for_completion,
-            job_timeout_seconds=self.job_timeout_seconds,
+            job_timeout_seconds=job_timeout_seconds,
             poll_interval=self.poll_interval,
             xcom_task_key=self.xcom_task_key,
             **kwargs,

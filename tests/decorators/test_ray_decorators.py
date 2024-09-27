@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -38,7 +39,7 @@ class TestRayDecoratedOperator:
         assert operator.ray_resources == {"custom_resource": 1}
         assert operator.fetch_logs == True
         assert operator.wait_for_completion == True
-        assert operator.job_timeout_seconds == 300
+        assert operator.job_timeout_seconds == timedelta(seconds=300)
         assert operator.poll_interval == 30
         assert operator.xcom_task_key == "ray_result"
 
@@ -59,7 +60,7 @@ class TestRayDecoratedOperator:
         assert operator.ray_resources is None
         assert operator.fetch_logs == True
         assert operator.wait_for_completion == True
-        assert operator.job_timeout_seconds == 600
+        assert operator.job_timeout_seconds == timedelta(seconds=600)
         assert operator.poll_interval == 60
         assert operator.xcom_task_key is None
 

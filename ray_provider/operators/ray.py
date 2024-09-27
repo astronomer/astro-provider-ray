@@ -116,7 +116,7 @@ class SubmitRayJob(BaseOperator):
     :param gpu_device_plugin_yaml: URL or path to the GPU device plugin YAML file. Defaults to NVIDIA's plugin.
     :param fetch_logs: Whether to fetch logs from the Ray job. Defaults to True.
     :param wait_for_completion: Whether to wait for the job to complete before marking the task as finished. Defaults to True.
-    :param job_timeout_seconds: Maximum time to wait for job completion in seconds. Defaults to 600 seconds.
+    :param job_timeout_seconds: Maximum time to wait for job completion in seconds. Defaults to 600 seconds. Set to 0 if you want the job to run indefinitely without timeouts.
     :param poll_interval: Interval between job status checks in seconds. Defaults to 60 seconds.
     :param xcom_task_key: XCom key to retrieve the dashboard URL. Defaults to None.
     """
@@ -168,7 +168,7 @@ class SubmitRayJob(BaseOperator):
         self.gpu_device_plugin_yaml = gpu_device_plugin_yaml
         self.fetch_logs = fetch_logs
         self.wait_for_completion = wait_for_completion
-        self.job_timeout_seconds = job_timeout_seconds
+        self.job_timeout_seconds = timedelta(seconds=job_timeout_seconds) if job_timeout_seconds > 0 else None
         self.poll_interval = poll_interval
         self.xcom_task_key = xcom_task_key
         self.dashboard_url: str | None = None
@@ -294,7 +294,7 @@ class SubmitRayJob(BaseOperator):
                             fetch_logs=self.fetch_logs,
                         ),
                         method_name="execute_complete",
-                        timeout=timedelta(seconds=self.job_timeout_seconds),
+                        timeout=self.job_timeout_seconds,
                     )
                 elif current_status == JobStatus.SUCCEEDED:
                     self.log.info("Job %s completed successfully", self.job_id)
