@@ -281,6 +281,11 @@ class SubmitRayJob(BaseOperator):
                 current_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
                 self.log.info(f"Current job status for {self.job_id} is: {current_status}")
 
+                if isinstance(self.job_timeout_seconds, timedelta):
+                    job_timeout_seconds = self.job_timeout_seconds
+                else:
+                    job_timeout_seconds = timedelta(seconds=self.job_timeout_seconds) if self.job_timeout_seconds > 0 else None
+
                 if current_status not in self.terminal_states:
                     self.log.info("Deferring the polling to RayJobTrigger...")
                     self.defer(
@@ -294,7 +299,7 @@ class SubmitRayJob(BaseOperator):
                             fetch_logs=self.fetch_logs,
                         ),
                         method_name="execute_complete",
-                        timeout=self.job_timeout_seconds,
+                        timeout=job_timeout_seconds,
                     )
                 elif current_status == JobStatus.SUCCEEDED:
                     self.log.info("Job %s completed successfully", self.job_id)
