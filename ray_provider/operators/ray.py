@@ -185,8 +185,7 @@ class SubmitRayJob(BaseOperator):
         if hasattr(self, "hook") and self.job_id:
             self.log.info(f"Deleting Ray job {self.job_id} due to task kill.")
             self.hook.delete_ray_job(self.dashboard_url, self.job_id)
-        if self.ray_cluster_yaml:
-            self._delete_cluster()
+        self._delete_cluster()
 
     @cached_property
     def hook(self) -> PodOperatorHookProtocol:
@@ -262,48 +261,55 @@ class SubmitRayJob(BaseOperator):
         :raises AirflowException: If the job fails, is cancelled, or reaches an unexpected state.
         """
 
-        self._setup_cluster(context=context)
+        try:
+            self._setup_cluster(context=context)
 
-        self.dashboard_url = self._get_dashboard_url(context)
+            self.dashboard_url = self._get_dashboard_url(context)
 
-        self.job_id = self.hook.submit_ray_job(
-            dashboard_url=self.dashboard_url,
-            entrypoint=self.entrypoint,
-            runtime_env=self.runtime_env,
-            entrypoint_num_cpus=self.num_cpus,
-            entrypoint_num_gpus=self.num_gpus,
-            entrypoint_memory=self.memory,
-            entrypoint_resources=self.ray_resources,
-        )
-        self.log.info(f"Ray job submitted with id: {self.job_id}")
+            self.job_id = self.hook.submit_ray_job(
+                dashboard_url=self.dashboard_url,
+                entrypoint=self.entrypoint,
+                runtime_env=self.runtime_env,
+                entrypoint_num_cpus=self.num_cpus,
+                entrypoint_num_gpus=self.num_gpus,
+                entrypoint_memory=self.memory,
+                entrypoint_resources=self.ray_resources,
+            )
+            self.log.info(f"Ray job submitted with id: {self.job_id}")
 
-        if self.wait_for_completion:
-            current_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
-            self.log.info(f"Current job status for {self.job_id} is: {current_status}")
+            if self.wait_for_completion:
+                current_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
+                self.log.info(f"Current job status for {self.job_id} is: {current_status}")
 
-            if current_status not in self.terminal_states:
-                self.log.info("Deferring the polling to RayJobTrigger...")
-                self.defer(
-                    trigger=RayJobTrigger(
-                        job_id=self.job_id,
-                        conn_id=self.conn_id,
-                        xcom_dashboard_url=self.dashboard_url,
-                        poll_interval=self.poll_interval,
-                        fetch_logs=self.fetch_logs,
-                    ),
-                    method_name="execute_complete",
-                    timeout=timedelta(seconds=self.job_timeout_seconds) if self.job_timeout_seconds > 0 else None,
-                )
-            elif current_status == JobStatus.SUCCEEDED:
-                self.log.info("Job %s completed successfully", self.job_id)
-            elif current_status == JobStatus.FAILED:
-                raise AirflowException(f"Job failed:\n{self.job_id}")
-            elif current_status == JobStatus.STOPPED:
-                raise AirflowException(f"Job was cancelled:\n{self.job_id}")
-            else:
-                raise AirflowException(f"Encountered unexpected state `{current_status}` for job_id `{self.job_id}`")
-
-        return self.job_id
+                if current_status not in self.terminal_states:
+                    self.log.info("Deferring the polling to RayJobTrigger...")
+                    self.defer(
+                        trigger=RayJobTrigger(
+                            job_id=self.job_id,
+                            conn_id=self.conn_id,
+                            xcom_dashboard_url=self.dashboard_url,
+                            ray_cluster_yaml=self.ray_cluster_yaml,
+                            gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
+                            poll_interval=self.poll_interval,
+                            fetch_logs=self.fetch_logs,
+                        ),
+                        method_name="execute_complete",
+                        timeout=timedelta(seconds=self.job_timeout_seconds) if self.job_timeout_seconds > 0
+                    )
+                elif current_status == JobStatus.SUCCEEDED:
+                    self.log.info("Job %s completed successfully", self.job_id)
+                elif current_status == JobStatus.FAILED:
+                    raise AirflowException(f"Job failed:\n{self.job_id}")
+                elif current_status == JobStatus.STOPPED:
+                    raise AirflowException(f"Job was cancelled:\n{self.job_id}")
+                else:
+                    raise AirflowException(
+                        f"Encountered unexpected state `{current_status}` for job_id `{self.job_id}`"
+                    )
+            return self.job_id
+        except Exception as e:
+            self._delete_cluster()
+            raise AirflowException(f"SubmitRayJob operator failed due to {e}. Cleaning up resources...")
 
     def execute_complete(self, context: Context, event: dict[str, Any]) -> None:
         """
