@@ -1,4 +1,4 @@
-Welcome to Ray provider documentation!
+Welcome to the Ray provider documentation!
 ======================================
 
 .. toctree::
@@ -12,14 +12,14 @@ Welcome to Ray provider documentation!
    API Reference <api/ray_provider>
    Contributing <CONTRIBUTING>
 
-This repository provides tools for integrating `Apache Airflow®`_ with Ray, enabling the orchestration of Ray jobs within Airflow DAGs. It includes a decorator, two operators, and one trigger designed to efficiently manage and monitor Ray jobs and services.
+This repository contains modules for integrating `Apache Airflow®`_ with Ray, enabling the orchestration of Ray jobs from Airflow DAGs. It includes a decorator, two operators, and one trigger designed to efficiently manage and monitor Ray jobs and services.
 
 Benefits of using this provider include:
 
 - **Integration**: Incorporate Ray jobs into Airflow DAGs for unified workflow management.
 - **Distributed computing**: Use Ray's distributed capabilities within Airflow pipelines for scalable ETL, LLM fine-tuning etc.
 - **Monitoring**: Track Ray job progress through Airflow's user interface.
-- **Dependency management**: Define and manage dependencies between Ray jobs and other tasks in DAGs.
+- **Dependency management**: Define and manage dependencies between Ray jobs and other tasks in Airflow DAGs.
 - **Resource allocation**: Run Ray jobs alongside other task types within a single pipeline.
 
 .. _Apache Airflow®: https://airflow.apache.org/
@@ -39,15 +39,15 @@ Quickstart
 
 See the :doc:`Getting Started <getting_started/setup>` page for detailed instructions on how to begin using the provider.
 
-What is the Ray provider?
+Why use Airflow with Ray?
 -------------------------
 
-Enterprise data value extraction involves two crucial components:
+Value creation from data in an enterprise environment involves two crucial components:
 
-- Data Engineering
-- Data Science/ML/AI
+- Data Engineering (ETL/ELT/Infrastructure Management)
+- Data Science (ML/AI)
 
-While Airflow excels at data engineering tasks through its extensive plugin ecosystem, it generally relies on external systems when dealing with large-scale ETL(100s GB to PB scale) or AI tasks such as fine-tuning & deploying LLMs etc.
+While Airflow excels at orchestrating both, data engineering and data science related tasks through its extensive provider ecosystem, it often relies on external systems when dealing with large-scale (100s GB to PB scale) data and compute (GPU) requirements, such as fine-tuning & deploying LLMs etc.
 
 Ray is a particularly powerful platform for handling large scale computations and this provider makes it very straightforward to orchestrate Ray jobs from Airflow.
 
@@ -57,12 +57,11 @@ Ray is a particularly powerful platform for handling large scale computations an
    :width: 499
    :height: 561
 
-The architecture diagram above shows how we can deploy both Airflow & Ray on a Kubernetes cluster for elastic compute.
-
+The architecture diagram above shows that we can run both, Airflow and Ray side by side on Kubernetes to leverage the best of both worlds. Airflow can be used to orchestrate Ray jobs and services, while Ray can be used to run distributed computations.
 
 Use Cases
 ^^^^^^^^^
-- **Scalable ETL**: Orchestrate and monitor Ray jobs on on-demand compute clusters using the Ray Data library. These operations could be custom Python code or ML model inference.
+- **Scalable ETL**: Orchestrate and monitor Ray jobs to perform distributed ETL for heavy data loads on on-demand compute clusters using the Ray Data library.
 - **Model Training**: Schedule model training or fine-tuning jobs on flexible cadences (daily/weekly/monthly). Benefits include:
 
   * Optimize resource utilization by scheduling Ray jobs during cost-effective periods
