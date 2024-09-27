@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -161,9 +162,31 @@ class TestSubmitRayJob:
         assert operator.gpu_device_plugin_yaml == "https://example.com/plugin.yml"
         assert operator.fetch_logs == True
         assert operator.wait_for_completion == True
-        assert operator.job_timeout_seconds == 1200
+        assert operator.job_timeout_seconds == timedelta(seconds=1200)
         assert operator.poll_interval == 30
         assert operator.xcom_task_key == "task.key"
+
+    def test_init_no_timeout(self):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={"pip": ["package1", "package2"]},
+            num_cpus=2,
+            num_gpus=1,
+            memory=1000,
+            resources={"custom_resource": 1},
+            ray_cluster_yaml="cluster.yaml",
+            kuberay_version="1.0.0",
+            update_if_exists=True,
+            gpu_device_plugin_yaml="https://example.com/plugin.yml",
+            fetch_logs=True,
+            wait_for_completion=True,
+            job_timeout_seconds=0,
+            poll_interval=30,
+            xcom_task_key="task.key",
+        )
+        assert operator.job_timeout_seconds is None
 
     def test_on_kill(self, mock_hook):
         operator = SubmitRayJob(task_id="test_task", conn_id="test_conn", entrypoint="python script.py", runtime_env={})
