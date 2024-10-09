@@ -21,16 +21,23 @@ See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for other 
    pip install astro-provider-ray
 
 
+**3. (Optional) Set up Cloud Authentication**
+
+.. toctree::
+   :maxdepth: 1
+
+   Amazon Web Services (AWS) <cloud_platforms_auth>
+
 **3. Setting up the Airflow connection**
 
 - Setup/Teardown a Ray cluster on Kubernetes
 
    - **Connection ID**: e.g., "ray_k8s_conn"
    - **Connection Type**: "Ray"
-   - **Kube config path** OR **Kube config content (JSON format)**: Kubeconfig of the Kubernetes cluster where Ray cluster must be set up
+   - **Kube config path**: Fully qualified path to the kubeconfig file on your repo. For example, *"/usr/local/airflow/config/kubeconfig.yaml"*
+   - **Kube config content (JSON format)**: Kubeconfig of the Kubernetes cluster where Ray cluster must be set up in JSON format
    - **Namespace**: The K8s namespace where your cluster must be created. If not provided, "default" is used
    - **Optional fields**: Cluster context, Disable SSL, Disable TCP keepalive
-
 
 - Use an existing Ray cluster
 
