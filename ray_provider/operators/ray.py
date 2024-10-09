@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from datetime import timedelta
 from functools import cached_property
 from typing import Any
@@ -312,8 +313,10 @@ class SubmitRayJob(BaseOperator):
                     )
             return self.job_id
         except Exception as e:
-            self._delete_cluster()
+            error_details = traceback.format_exc()
+            self.log.info(error_details)
             raise AirflowException(f"SubmitRayJob operator failed due to {e}. Cleaning up resources...")
+            self._delete_cluster()
 
     def execute_complete(self, context: Context, event: dict[str, Any]) -> None:
         """
