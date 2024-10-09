@@ -31,7 +31,7 @@ Check out the Getting Started guide in our [docs](https://astronomer.github.io/a
 ## Sample DAGs
 
 ### Example 1: Using @ray.task for job life cycle
-The below example showcases how to use the ``@ray.task`` decorator to manage the full lifecycle of a Ray cluster: setup, job execution, and teardown.
+The below example showcases how to use the ``@ray.task`` decorator to manage the full lifecycle of a Ray cluster: setup, job execution, and teardown. The configuration for the decorator can provided statically or at runtime.
 
 This approach is ideal for jobs that require a dedicated, short-lived cluster, optimizing resource usage by cleaning up after task completion
 

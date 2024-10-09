@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from datetime import timedelta
 from functools import cached_property
 from typing import Any
@@ -281,6 +282,10 @@ class SubmitRayJob(BaseOperator):
                 current_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
                 self.log.info(f"Current job status for {self.job_id} is: {current_status}")
 
+                job_timeout_seconds = self.job_timeout_seconds
+                if isinstance(self.job_timeout_seconds, int):
+                    job_timeout_seconds = timedelta(seconds=self.job_timeout_seconds) if self.job_timeout_seconds > 0 else None
+
                 if current_status not in self.terminal_states:
                     self.log.info("Deferring the polling to RayJobTrigger...")
                     self.defer(
@@ -294,7 +299,7 @@ class SubmitRayJob(BaseOperator):
                             fetch_logs=self.fetch_logs,
                         ),
                         method_name="execute_complete",
-                        timeout=self.job_timeout_seconds,
+                        timeout=job_timeout_seconds,
                     )
                 elif current_status == JobStatus.SUCCEEDED:
                     self.log.info("Job %s completed successfully", self.job_id)
@@ -308,8 +313,10 @@ class SubmitRayJob(BaseOperator):
                     )
             return self.job_id
         except Exception as e:
-            self._delete_cluster()
+            error_details = traceback.format_exc()
+            self.log.info(error_details)
             raise AirflowException(f"SubmitRayJob operator failed due to {e}. Cleaning up resources...")
+            self._delete_cluster()
 
     def execute_complete(self, context: Context, event: dict[str, Any]) -> None:
         """
