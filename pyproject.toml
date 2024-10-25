@@ -73,7 +73,7 @@ docs = [
 
 [tool.hatch.envs.tests]
 dependencies = [
-    "astro-provider[tests]",
+    "astro-provider-ray[tests]",
     "types-PyYAML",
     "types-attrs",
     "types-requests",

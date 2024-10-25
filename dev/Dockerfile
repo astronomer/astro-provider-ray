@@ -9,6 +9,3 @@ RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/s
 USER astro
 
 RUN pip install /usr/local/airflow/include/*.whl
-
-
-
