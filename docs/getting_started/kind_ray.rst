@@ -8,12 +8,12 @@ Prerequisites
 
 Install the following software:
 
-- Docker
-- Enable Docker Desktop Kubernetes
-- Kind
-- Helm
-- Kubectl
-- Astro CLI
+- `Docker <https://docs.docker.com/desktop/>`_
+- `Enable Docker Desktop Kubernetes <https://docs.docker.com/desktop/kubernetes/>`_
+- `Kind <https://kind.sigs.k8s.io/docs/user/quick-start/>`_
+- `Helm <https://helm.sh/>`_
+- `Kubectl <https://kubernetes.io/docs/tasks/tools/>`_
+- `Astro CLI <https://www.astronomer.io/docs/astro/cli/install-cli>`_
 
 Setup RayCluster
 ----------------
