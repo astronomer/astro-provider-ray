@@ -142,3 +142,7 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# asro-cli
+dev/include/*
+dev/dags/config

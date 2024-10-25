@@ -21,6 +21,14 @@ See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for other 
    pip install astro-provider-ray
 
 
+**3. (Optional) Set up RayCluster and Airflow**
+
+.. toctree::
+   :maxdepth: 1
+
+   Setup RayCluster and Airflow <kind_ray>
+
+
 **3. (Optional) Set up Cloud Authentication**
 
 .. toctree::
