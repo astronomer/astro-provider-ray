@@ -29,7 +29,7 @@ See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for other 
    Setup RayCluster and Airflow <kind_ray>
 
 
-**3. (Optional) Set up Cloud Authentication**
+**4. (Optional) Set up Cloud Authentication**
 
 .. toctree::
    :maxdepth: 1
