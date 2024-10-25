@@ -93,7 +93,7 @@ Setup Apache Airflow®
 
 a. Visit http://localhost:8080/ in your browser.
 b. Log in with username: admin and password: admin.
-c. Click on Admin -> Connections -> Add a new record. Select Connection type `Ray`
+c. Click on Admin -> Connections -> Add a new record. Select Connection type ``Ray``
 
 The most basic setup will look something like below:
 
