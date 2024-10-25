@@ -97,4 +97,7 @@ c. Click on Admin -> Connections -> Add a new record. Select Connection type ``R
 
 The most basic setup will look something like below:
 
+- Ray dashboard url: Kind Ray cluster dashboard url
+- Kube config path: Provide the path to your Kubernetes config file and ensure it is accessible from the Airflow containers.
+
 .. image::  ../_static/basic_local_kubernetes_conn.png
