@@ -30,6 +30,12 @@ Pre-requisites
 
     pip install pytest
 
+
+Set up RayCluster and  Apache Airflow
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For instructions on setting up RayCluster and Apache Airflow, please see the `Local Development Setup <https://github.com/astronomer/astro-provider-ray/blob/main/docs/getting_started/local_development_setup.rst>`_.
+
 Run tests
 ~~~~~~~~~
 

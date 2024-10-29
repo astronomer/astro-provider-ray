@@ -48,10 +48,3 @@ See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for other 
 
 .. image:: ../_static/connection.png
    :align: center
-
-**5. (Optional) Local Development Setup**
-
-.. toctree::
-   :maxdepth: 1
-
-   Local Development Setup <local_development_setup>

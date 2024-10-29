@@ -1,5 +1,5 @@
-Local Development Setup
-#######################
+Local Development Setup Guide
+#############################
 
 This document describes the local setup for RayCluster and `Apache Airflow® <https://airflow.apache.org/>`_.
 
