@@ -28,7 +28,7 @@ Table of Contents
 -----------------
 
 - `Quickstart`_
-- `What is the Ray provider?`_
+- `Why use Airflow with Ray?`_
 - `Components`_
 - `Getting Involved`_
 - `Changelog`_
