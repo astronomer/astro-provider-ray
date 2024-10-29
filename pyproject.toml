@@ -91,6 +91,11 @@ test-cov = 'sh scripts/test/unit_cov.sh'
 test-integration = 'sh scripts/test/integration_test.sh'
 static-check = "pre-commit run --all-files"
 
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::DeprecationWarning"]
+minversion = "6.0"
+markers = ["integration"]
+
 ######################################
 # DOCS
 ######################################

@@ -339,6 +339,7 @@ class RayHook(KubernetesHook):  # type: ignore
 
                 if not lb_details:
                     self.log.info("LoadBalancer details not available yet.")
+                    time.sleep(retry_interval)
                     continue
 
                 working_address = self._check_load_balancer_readiness(lb_details)
