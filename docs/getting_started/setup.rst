@@ -21,22 +21,14 @@ See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for other 
    pip install astro-provider-ray
 
 
-**3. (Optional) Set up RayCluster and Airflow**
-
-.. toctree::
-   :maxdepth: 1
-
-   Setup RayCluster and Airflow <kind_ray>
-
-
-**4. (Optional) Set up Cloud Authentication**
+**3. (Optional) Set up Cloud Authentication**
 
 .. toctree::
    :maxdepth: 1
 
    Amazon Web Services (AWS) <cloud_platforms_auth>
 
-**5. Setting up the Airflow connection**
+**4. Setting up the Airflow connection**
 
 - Setup/Teardown a Ray cluster on Kubernetes
 
@@ -56,3 +48,10 @@ See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for other 
 
 .. image:: ../_static/connection.png
    :align: center
+
+**5. (Optional) Local Development Setup**
+
+.. toctree::
+   :maxdepth: 1
+
+   Local Development Setup <local_development_setup>

@@ -1,7 +1,19 @@
-Setup RayCluster and Airflow
-============================
+Local Development Setup
+#######################
 
-This section describes the local setup for RayCluster and `Apache Airflow® <https://airflow.apache.org/>`_.
+This document describes the local setup for RayCluster and `Apache Airflow® <https://airflow.apache.org/>`_.
+
+Table of Contents
+=================
+
+- `Setup RayCluster`_
+- `Setup Apache Airflow®`_
+
+
+Setup RayCluster
+================
+
+This section describes how to set up RayCluster on Kind. For detailed instructions, please refer to the official guide: `RayCluster Quick Start <https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/raycluster-quick-start.html#raycluster-quickstart>`_.
 
 Prerequisites
 -------------
@@ -9,23 +21,15 @@ Prerequisites
 Install the following software:
 
 - `Docker <https://docs.docker.com/desktop/>`_
-- `Enable Docker Desktop Kubernetes <https://docs.docker.com/desktop/kubernetes/>`_
+- `Kubectl <https://kubernetes.io/docs/tasks/tools/>`_
 - `Kind <https://kind.sigs.k8s.io/docs/user/quick-start/>`_
 - `Helm <https://helm.sh/>`_
-- `Kubectl <https://kubernetes.io/docs/tasks/tools/>`_
-- `Astro CLI <https://www.astronomer.io/docs/astro/cli/install-cli>`_
-
-Setup RayCluster
-----------------
-
-For detailed instructions, refer to the official guide: `RayCluster Quick Start <https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/raycluster-quick-start.html#raycluster-quickstart>`_.
 
 1. **Create a Kind Cluster**
 
 .. code-block:: bash
 
     kind create cluster --image=kindest/node:v1.26.0
-
 
 2. **Deploy a KubeRay Operator**
 
@@ -62,9 +66,9 @@ For detailed instructions, refer to the official guide: `RayCluster Quick Start 
     # raycluster-kuberay-head-wvzh2                 1/1     Running   0          XXs
     # raycluster-kuberay-worker-workergroup-4dfsb   1/1     Running   0          XXs
 
-Wait for the pods to reach the Running state
+Wait for the pods to reach the ``Running`` state
 
-4. Expose the Port on Host Machine
+4. **Expose the Port on Host Machine**
 
 .. code-block:: bash
 
@@ -81,19 +85,33 @@ Wait for the pods to reach the Running state
 Visit http://127.0.0.1:8265 in your browser
 
 Setup Apache Airflow®
-----------------------
+=====================
 
-1. Start Airflow Instance
+This section describes how to set up `Apache Airflow® <https://airflow.apache.org/>`_ using Astro CLI. For detailed instructions, please refer to the official guide: `Astro CLI Quick Start <https://www.astronomer.io/docs/astro/cli/get-started-cli>`_.
+
+Prerequisites
+-------------
+
+- `Docker <https://docs.docker.com/desktop/>`_
+- `Astro CLI <https://www.astronomer.io/docs/astro/cli/install-cli>`_
+
+We have a `Makefile <https://github.com/astronomer/astro-provider-ray/blob/main/Makefile>`_ that wraps the Astro CLI. It installs the necessary packages into your image to run the DAG locally.
+
+1. **Start Airflow Instance**
 
 .. code-block:: bash
 
     make docker-run
 
-2. Create Airflow Connection
+To see other available Makefile targets, please run ``make help``.
 
-a. Visit http://localhost:8080/ in your browser.
-b. Log in with username: admin and password: admin.
-c. Click on Admin -> Connections -> Add a new record. Select Connection type ``Ray``
+2. **Create Airflow Connection**
+
+- Visit http://localhost:8080/ in your browser.
+
+- Log in with username: admin and password: admin.
+
+- Click on Admin -> Connections -> Add a new record. Select Connection type ``Ray``
 
 The most basic setup will look something like below:
 
