@@ -18,7 +18,7 @@ In the example below (``ray_taskflow_example_existing_cluster.py``), the ``@ray.
 .. important::
    **Set the Ray Dashboard URL connection parameter or RAY_ADDRESS on your airflow worker to connect to your cluster**
 
-.. literalinclude:: ../../example_dags/dags/ray_taskflow_example_existing_cluster.py
+.. literalinclude:: ../../dev/dags/ray_taskflow_example_existing_cluster.py
    :language: python
    :linenos:
 
@@ -30,7 +30,7 @@ Ray Cluster Sample Spec (YAML)
 
 Save this file in a location accessible to your Airflow installation, and reference it in your DAG code.
 
-.. literalinclude:: ../../example_dags/dags/scripts/ray.yaml
+.. literalinclude:: ../../dev/dags/scripts/ray.yaml
    :language: yaml
 
 
@@ -41,7 +41,7 @@ The below example showcases how to use the ``@ray.task`` decorator to manage the
 
 This approach is ideal for jobs that require a dedicated, short-lived cluster, optimizing resource usage by cleaning up after task completion.
 
-.. literalinclude:: ../../example_dags/dags/ray_taskflow_example.py
+.. literalinclude:: ../../dev/dags/ray_taskflow_example.py
    :language: python
    :linenos:
 
@@ -53,7 +53,7 @@ This example demonstrates how to use the ``SubmitRayJob`` operator to manage the
 
 This operator provides a more declarative way to define your Ray job within an Airflow DAG.
 
-.. literalinclude:: ../../example_dags/dags/ray_single_operator.py
+.. literalinclude:: ../../dev/dags/ray_single_operator.py
    :language: python
    :linenos:
 
@@ -76,6 +76,6 @@ This method is ideal for scenarios where you need fine-grained control over the 
 .. important::
    **The SubmitRayJob operator uses the xcom_task_key parameter "SetupRayCluster.dashboard" to retrieve the Ray dashboard URL. This URL, stored as an XCom variable by the SetupRayCluster task, is necessary for job submission.**
 
-.. literalinclude:: ../../example_dags/dags/setup-teardown.py
+.. literalinclude:: ../../dev/dags/setup-teardown.py
    :language: python
    :linenos:
