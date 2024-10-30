@@ -28,7 +28,7 @@ See the `installing Helm <https://helm.sh/docs/intro/install/>`_ page for other 
 
    Amazon Web Services (AWS) <cloud_platforms_auth>
 
-**3. Setting up the Airflow connection**
+**4. Setting up the Airflow connection**
 
 - Setup/Teardown a Ray cluster on Kubernetes
 

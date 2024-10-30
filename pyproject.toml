@@ -34,6 +34,11 @@ dependencies = [
     "apache-airflow-providers-cncf-kubernetes"
 ]
 
+[project.optional-dependencies]
+tests = [
+    "build",
+]
+
 [project.urls]
 Homepage = "https://astronomer.io"
 Source = "https://github.com/astronomer/astro-provider-ray/"
@@ -68,6 +73,7 @@ docs = [
 
 [tool.hatch.envs.tests]
 dependencies = [
+    "astro-provider-ray[tests]",
     "types-PyYAML",
     "types-attrs",
     "types-requests",
