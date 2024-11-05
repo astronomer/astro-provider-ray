@@ -31,9 +31,9 @@ Steps
 
 .. code-block:: bash
 
-    export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service-account-key.json
+    gcloud auth activate-service-account --key-file=</path/to/your/service-account-key.json>
 
-    gcloud auth activate-service-account --key-file=/path/to/your/service-account-key.json
+    gcloud config set project <YOUR_PROJECT_ID>
 
 3. **Install the gcloud auth plugin**
 
@@ -45,22 +45,31 @@ Steps
 
 .. code-block:: bash
 
-    gcloud container clusters create cluster-name \
+    gcloud container clusters create <YOUR_CLUSTER_NAME> \
           --zone us-central1-a \
           --num-nodes 1 \
           --machine-type e2-standard-4 \
           --enable-autoscaling --min-nodes=1 --max-nodes=3 \
           --no-enable-ip-alias
+          --project <YOUR_PROJECT_ID>
 
 5. **Retrieve GKE cluster configuration**
 
 .. code-block:: bash
 
-    gcloud container clusters get-credentials cluster-name --zone us-central1-a
+    gcloud container clusters get-credentials <YOUR_CLUSTER_NAME> --zone us-central1-a
 
     kubectl config view --raw > kubeconfig.yaml
 
 We will use this ``kubeconfig.yaml`` to create an Airflow connection type ``Ray`` in Astro Cloud.
+
+6. ** Optional: Delete GKE cluster**
+
+Once you no longer need the GKE cluster, you can delete it using the command below.
+
+.. code-block:: bash
+
+    gcloud container clusters delete <YOUR_CLUSTER_NAME>
 
 
 Deploy to Astro Cloud
@@ -81,14 +90,11 @@ Steps
 
 2. **Deploy the project on Astro Cloud**
 
-
-Please ensure you use `Dockerfile.ray_google_cloud <https://github.com/astronomer/astro-provider-ray/blob/main/dev/Dockerfile.ray_google_cloud>`_ as the default. The command below uses `Dockerfile <https://github.com/astronomer/astro-provider-ray/blob/main/dev/Dockerfile>`_ by default.
-
 .. code-block:: bash
 
     make deploy
 
-This command will build a wheel from your branch and deploy the `project <https://github.com/astronomer/astro-provider-ray/tree/main/dev>`_ in Astro Cloud
+This command will build a wheel from your branch and deploy the `project <https://github.com/astronomer/astro-provider-ray/tree/main/dev>`_ in Astro Cloud.
 
 3. **Create an Airflow Connection**
 
@@ -106,7 +112,7 @@ This can occur if the environment isn't properly configured for using a service 
     gcloud auth activate-service-account --key-file='/path/to/your/service-account-key.json'
 
 
-Alternatively, you can add a starting Airflow task to execute this command.
+Alternatively, you can add a start Airflow task to execute this command.
 
 .. code-block:: python
 

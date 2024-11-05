@@ -24,7 +24,7 @@ docker-run: build-whl ## Runs local Airflow for testing
 
 .PHONY: astro-login
 astro-login: # Login to Astro cloud
-	cd dev && astro login
+	cd dev && astro login cloud.astronomer-stage.io
 
 .PHONY: deploy
 deploy: build-whl astro-login ## Runs local Airflow for testing
