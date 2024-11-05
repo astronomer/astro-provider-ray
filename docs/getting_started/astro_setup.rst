@@ -61,7 +61,7 @@ Steps
 
     kubectl config view --raw > kubeconfig.yaml
 
-We will use this ``kubeconfig.yaml`` to create an Airflow connection type ``Ray`` in Astro Cloud.
+We will use the ``kubeconfig.yaml`` file to create an Airflow connection of type ``Ray`` in Astro Cloud. You need to mount the ``kubeconfig.yaml`` file into the Airflow Docker container and specify the path to this file within the Airflow connection.
 
 6. ** Optional: Delete GKE cluster**
 

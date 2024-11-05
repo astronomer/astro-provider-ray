@@ -1,6 +1,8 @@
 FROM quay.io/astronomer/astro-runtime:12.2.0
 
 ENV AIRFLOW__CORE__TEST_CONNECTION=Enabled
+# You need to mount the service-account-key.json file,
+# and the path should refer to the file's location inside the Docker container.
 ENV GOOGLE_APPLICATION_CREDENTIALS=</path/to/your/service-account-key.json>
 
 USER root
