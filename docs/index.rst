@@ -9,6 +9,7 @@ Welcome to the Ray provider documentation!
    Home <self>
    Getting started <getting_started/setup>
    Code Samples <getting_started/code_samples>
+   Deploy on Astro Cloud <getting_started/astro_setup>
    API Reference <api/ray_provider>
    Contributing <CONTRIBUTING>
 

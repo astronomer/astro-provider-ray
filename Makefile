@@ -22,6 +22,14 @@ docker-run: build-whl ## Runs local Airflow for testing
 		cd dev && astro dev restart; \
 	fi
 
+.PHONY: astro-login
+astro-login: # Login to Astro cloud
+	cd dev && astro login cloud.astronomer-stage.io
+
+.PHONY: deploy
+deploy: build-whl astro-login ## Runs local Airflow for testing
+	cd dev && astro deploy -f
+
 .PHONY: docker-stop
 docker-stop: ## Stop Docker container
 	cd dev && astro dev stop
