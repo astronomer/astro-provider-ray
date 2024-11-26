@@ -127,6 +127,37 @@ Wait for the pods to reach the ``Running`` state
 
 Visit http://127.0.0.1:8265 in your browser.
 
+6. Create a Kubernetes secret with your Docker Hub credentials
+
+We highly encourage users to create a Kubernetes secret containing `Docker hub credentials <https://hub.docker.com/>`_
+and add this to Kind, as illustrated below:
+
+.. code-block:: bash
+
+    kubectl create secret docker-registry my-registry-secret  --docker-server=https://index.docker.io/v1/ --docker-username=<dockerhub-username> --docker-password=<dockerhub-password>
+
+Users should replace ``<dockerhub-username>`` and ``<dockerhub-password>`` with their own credentials.
+
+The goal of this configuration is to overcome a common issue, when Docker Hub blocks Kind from pulling the images necessary to create a Ray cluster.
+The side effect is that the ``raycluster-kuberay-head`` and ``raycluster-kuberay-workergroup``
+Kubernetes Pods will not manage to get into the ``Running`` state. When describing them, users will identify the
+``Error: ImagePullBackOff`` message and:
+
+.. code-block::
+
+    │ image "rayproject/ray-ml:latest": failed to pull and unpack image "docker.io/ray │
+
+When using the Kubernetes secret with Docker hub credentials, such as ``my-registry-secret``,
+users should make sure that their RayCluster K8s YAML contains:
+
+.. code-block::
+
+     spec:
+        imagePullSecrets:
+          - name: my-registry-secret
+
+This approach is illustrated in the file ``dev/dags/scripts/ray.yaml``.
+
 
 Additional steps in MacOS
 =========================
@@ -325,3 +356,4 @@ The most basic setup will look something like below:
 - Disable SSL: Tick the disable SSL boolean if needed
 
 .. image::  ../_static/basic_local_kubernetes_conn.png
+
