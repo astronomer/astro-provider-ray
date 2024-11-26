@@ -1,6 +1,28 @@
 CHANGELOG
 =========
 
+0.3.0 (2024-11-29)
+------------------
+
+**Breaking changes**
+
+In order to improve the development and troubleshooting DAGs created with this provider, we introduced breaking changes
+to the folder structure. It was flattened and the import paths to existing decorators, hooks, operators and trigger
+changed, as documented in the table below:
+
++-----------+---------------------------------------------+-----------------------------------------+
+| Type      | Previous import path                        | Current import path                     |
++===========+=============================================+=========================================+
+| Decorator | ray_provider.decorators.ray.ray             | ray_provider.decorators.ray             |
+| Hook      | ray_provider.hooks.ray.RayHook              | ray_provider.hooks.RayHook              |
+| Operator  | ray_provider.operators.ray.DeleteRayCluster | ray_provider.operators.DeleteRayCluster |
+| Operator  | ray_provider.operators.ray.SetupRayCluster  | ray_provider.operators.SetupRayCluster  |
+| Operator  | ray_provider.operators.ray.SubmitRayJob     | ray_provider.operators.SubmitRayJob     |
+| Trigger   | ray_provider.triggers.ray.RayJobTrigger     | ray_provider.triggers.RayJobTrigger     |
++-----------+---------------------------------------------+-----------------------------------------+
+
+
+
 0.2.1 (2024-09-04)
 ------------------
 

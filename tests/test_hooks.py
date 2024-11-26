@@ -8,19 +8,19 @@ from kubernetes import client
 from kubernetes.client.exceptions import ApiException
 from ray.job_submission import JobStatus
 
-from ray_provider.hooks.ray import RayHook
+from ray_provider.hooks import RayHook
 
 
 class TestRayHook:
 
     @pytest.fixture
     def ray_hook(self):
-        with patch("ray_provider.hooks.ray.KubernetesHook.get_connection") as mock_get_connection:
+        with patch("ray_provider.hooks.KubernetesHook.get_connection") as mock_get_connection:
             mock_connection = Mock()
             mock_connection.extra_dejson = {"kube_config_path": None, "kube_config": None, "cluster_context": None}
             mock_get_connection.return_value = mock_connection
 
-            with patch("ray_provider.hooks.ray.KubernetesHook.__init__", return_value=None):
+            with patch("ray_provider.hooks.KubernetesHook.__init__", return_value=None):
                 hook = RayHook(conn_id="test_conn")
                 # Manually set the necessary attributes
                 hook.namespace = "default"
@@ -40,7 +40,7 @@ class TestRayHook:
         assert "kube_config_path" in widgets
         assert "namespace" in widgets
 
-    @patch("ray_provider.hooks.ray.JobSubmissionClient")
+    @patch("ray_provider.hooks.JobSubmissionClient")
     def test_ray_client(self, mock_job_client, ray_hook):
         mock_job_client.return_value = MagicMock()
         client = ray_hook.ray_client()
@@ -54,16 +54,16 @@ class TestRayHook:
             verify=ray_hook.verify,
         )
 
-    @patch("ray_provider.hooks.ray.JobSubmissionClient")
+    @patch("ray_provider.hooks.JobSubmissionClient")
     def test_submit_ray_job(self, mock_job_client, ray_hook):
         mock_client_instance = mock_job_client.return_value
         mock_client_instance.submit_job.return_value = "test_job_id"
         job_id = ray_hook.submit_ray_job(dashboard_url="http://example.com", entrypoint="test_entry")
         assert job_id == "test_job_id"
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.config.load_kube_config")
     def test_setup_kubeconfig_path(self, mock_load_kube_config, mock_kubernetes_init, mock_get_connection):
         mock_kubernetes_init.return_value = None
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
@@ -74,9 +74,9 @@ class TestRayHook:
         assert hook.kubeconfig == "/tmp/fake_kubeconfig"
         mock_load_kube_config.assert_called_once_with(config_file="/tmp/fake_kubeconfig", context="test_context")
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.config.load_kube_config")
     @patch("tempfile.NamedTemporaryFile")
     def test_setup_kubeconfig_content(
         self, mock_tempfile, mock_load_kube_config, mock_kubernetes_init, mock_get_connection
@@ -95,8 +95,8 @@ class TestRayHook:
         mock_tempfile.return_value.__enter__.return_value.write.assert_called_once_with(kubeconfig_content.encode())
         mock_load_kube_config.assert_called_once_with(config_file="/tmp/fake_kubeconfig", context="test_context")
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
     def test_setup_kubeconfig_invalid_config(self, mock_kubernetes_init, mock_get_connection):
         mock_kubernetes_init.return_value = None
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
@@ -110,8 +110,8 @@ class TestRayHook:
             "kube_config are mutually exclusive. You can only use one option at a time."
         )
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.JobSubmissionClient")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.JobSubmissionClient")
     def test_delete_ray_job(self, mock_job_client, mock_get_connection):
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
         mock_client_instance = mock_job_client.return_value
@@ -120,8 +120,8 @@ class TestRayHook:
         result = hook.delete_ray_job("http://example.com", job_id="test_job_id")
         assert result == "deleted"
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.JobSubmissionClient")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.JobSubmissionClient")
     def test_get_ray_job_status(self, mock_job_client, mock_get_connection):
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
         mock_client_instance = mock_job_client.return_value
@@ -130,8 +130,8 @@ class TestRayHook:
         status = hook.get_ray_job_status("http://example.com", "test_job_id")
         assert status == JobStatus.SUCCEEDED
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.JobSubmissionClient")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.JobSubmissionClient")
     def test_get_ray_job_logs(self, mock_job_client, mock_get_connection):
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
         mock_client_instance = mock_job_client.return_value
@@ -154,8 +154,8 @@ class TestRayHook:
         )
         mock_client_instance.get_job_logs.assert_called_once_with(job_id=job_id)
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.requests.get")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.requests.get")
     @patch("builtins.open", new_callable=mock_open, read_data="key: value\n")
     def test_load_yaml_content(self, mock_open, mock_requests, mock_get_connection):
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
@@ -203,8 +203,8 @@ class TestRayHook:
         assert "The specified YAML file does not exist" in str(exc_info.value)
         mock_isfile.assert_called_once_with("non_existent_file.yaml")
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.socket.socket")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.socket.socket")
     def test_is_port_open(self, mock_socket, mock_get_connection):
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
         mock_socket_instance = mock_socket.return_value
@@ -215,7 +215,7 @@ class TestRayHook:
         result = hook._is_port_open("localhost", 8080)
         assert result is True
 
-    @patch("ray_provider.hooks.ray.RayHook.core_v1_client")
+    @patch("ray_provider.hooks.RayHook.core_v1_client")
     def test_get_service_success(self, mock_core_v1_client, ray_hook):
         mock_service = Mock(spec=client.V1Service)
         mock_core_v1_client.read_namespaced_service.return_value = mock_service
@@ -225,7 +225,7 @@ class TestRayHook:
         assert service == mock_service
         mock_core_v1_client.read_namespaced_service.assert_called_once_with("test-service", "default")
 
-    @patch("ray_provider.hooks.ray.RayHook.core_v1_client")
+    @patch("ray_provider.hooks.RayHook.core_v1_client")
     def test_get_service_not_found(self, mock_core_v1_client, ray_hook):
         mock_core_v1_client.read_namespaced_service.side_effect = client.exceptions.ApiException(status=404)
 
@@ -285,8 +285,8 @@ class TestRayHook:
 
         assert lb_details is None
 
-    @patch("ray_provider.hooks.ray.RayHook.log")
-    @patch("ray_provider.hooks.ray.subprocess.run")
+    @patch("ray_provider.hooks.RayHook.log")
+    @patch("ray_provider.hooks.subprocess.run")
     def test_run_bash_command_exception(self, mock_subprocess_run, mock_log, ray_hook):
         mock_subprocess_run.side_effect = subprocess.CalledProcessError(
             returncode=1, cmd="test command", output="test output", stderr="test error"
@@ -313,9 +313,9 @@ class TestRayHook:
             env=ray_hook._run_bash_command.__globals__["os"].environ.copy(),
         )
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.subprocess.run")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.subprocess.run")
     def test_install_kuberay_operator(self, mock_subprocess_run, mock_kubernetes_init, mock_get_connection):
         mock_kubernetes_init.return_value = None
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
@@ -327,9 +327,9 @@ class TestRayHook:
         assert "install output" in stdout
         assert stderr == ""
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.subprocess.run")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.subprocess.run")
     def test_uninstall_kuberay_operator(self, mock_subprocess_run, mock_kubernetes_init, mock_get_connection):
         mock_kubernetes_init.return_value = None
         mock_get_connection.return_value = MagicMock(conn_id="test_conn", extra_dejson={})
@@ -341,9 +341,9 @@ class TestRayHook:
         assert "uninstall output" in stdout
         assert stderr == ""
 
-    @patch("ray_provider.hooks.ray.RayHook._get_service")
-    @patch("ray_provider.hooks.ray.RayHook._get_load_balancer_details")
-    @patch("ray_provider.hooks.ray.RayHook._check_load_balancer_readiness")
+    @patch("ray_provider.hooks.RayHook._get_service")
+    @patch("ray_provider.hooks.RayHook._get_load_balancer_details")
+    @patch("ray_provider.hooks.RayHook._check_load_balancer_readiness")
     def test_wait_for_load_balancer_success(
         self, mock_check_readiness, mock_get_lb_details, mock_get_service, ray_hook
     ):
@@ -370,9 +370,9 @@ class TestRayHook:
         mock_get_lb_details.assert_called_once_with(mock_service)
         mock_check_readiness.assert_called_once()
 
-    @patch("ray_provider.hooks.ray.RayHook._get_service")
-    @patch("ray_provider.hooks.ray.RayHook._get_load_balancer_details")
-    @patch("ray_provider.hooks.ray.RayHook._is_port_open")
+    @patch("ray_provider.hooks.RayHook._get_service")
+    @patch("ray_provider.hooks.RayHook._get_load_balancer_details")
+    @patch("ray_provider.hooks.RayHook._is_port_open")
     def test_wait_for_load_balancer_timeout(self, mock_is_port_open, mock_get_lb_details, mock_get_service, ray_hook):
         mock_service = Mock(spec=client.V1Service)
         mock_get_service.return_value = mock_service
@@ -390,7 +390,7 @@ class TestRayHook:
 
         assert "LoadBalancer did not become ready after 2 attempts" in str(exc_info.value)
 
-    @patch("ray_provider.hooks.ray.RayHook._get_service")
+    @patch("ray_provider.hooks.RayHook._get_service")
     def test_wait_for_load_balancer_service_not_found(self, mock_get_service, ray_hook):
         mock_get_service.side_effect = AirflowException("Service test-service not found")
 
@@ -399,7 +399,7 @@ class TestRayHook:
 
         assert "LoadBalancer did not become ready after 1 attempts" in str(exc_info.value)
 
-    @patch("ray_provider.hooks.ray.RayHook._is_port_open")
+    @patch("ray_provider.hooks.RayHook._is_port_open")
     def test_check_load_balancer_readiness_ip(self, mock_is_port_open, ray_hook):
         mock_is_port_open.return_value = True
         lb_details = {"ip": "192.168.1.1", "hostname": None, "ports": [{"name": "http", "port": 80}]}
@@ -409,7 +409,7 @@ class TestRayHook:
         assert result == "192.168.1.1"
         mock_is_port_open.assert_called_once_with("192.168.1.1", 80)
 
-    @patch("ray_provider.hooks.ray.RayHook._is_port_open")
+    @patch("ray_provider.hooks.RayHook._is_port_open")
     def test_check_load_balancer_readiness_hostname(self, mock_is_port_open, ray_hook):
         mock_is_port_open.side_effect = [False, True]
         lb_details = {
@@ -424,7 +424,7 @@ class TestRayHook:
         mock_is_port_open.assert_any_call("192.168.1.1", 80)
         mock_is_port_open.assert_any_call("example.com", 80)
 
-    @patch("ray_provider.hooks.ray.RayHook._is_port_open")
+    @patch("ray_provider.hooks.RayHook._is_port_open")
     def test_check_load_balancer_readiness_not_ready(self, mock_is_port_open, ray_hook):
         mock_is_port_open.return_value = False
         lb_details = {"ip": "192.168.1.1", "hostname": "example.com", "ports": [{"name": "http", "port": 80}]}
@@ -435,10 +435,10 @@ class TestRayHook:
         mock_is_port_open.assert_any_call("192.168.1.1", 80)
         mock_is_port_open.assert_any_call("example.com", 80)
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.client.AppsV1Api.read_namespaced_daemon_set")
-    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.client.AppsV1Api.read_namespaced_daemon_set")
+    @patch("ray_provider.hooks.config.load_kube_config")
     def test_get_daemon_set(
         self, mock_load_kube_config, mock_read_daemon_set, mock_kubernetes_init, mock_get_connection
     ):
@@ -454,10 +454,10 @@ class TestRayHook:
 
         assert daemon_set.metadata.name == "test-daemonset"
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.client.AppsV1Api.read_namespaced_daemon_set")
-    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.client.AppsV1Api.read_namespaced_daemon_set")
+    @patch("ray_provider.hooks.config.load_kube_config")
     def test_get_daemon_set_not_found(
         self, mock_load_kube_config, mock_read_daemon_set, mock_kubernetes_init, mock_get_connection
     ):
@@ -470,10 +470,10 @@ class TestRayHook:
 
         assert daemon_set is None
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.client.AppsV1Api.create_namespaced_daemon_set")
-    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.client.AppsV1Api.create_namespaced_daemon_set")
+    @patch("ray_provider.hooks.config.load_kube_config")
     def test_create_daemon_set(
         self, mock_load_kube_config, mock_create_daemon_set, mock_kubernetes_init, mock_get_connection
     ):
@@ -490,10 +490,10 @@ class TestRayHook:
 
         assert daemon_set.metadata.name == "test-daemonset"
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.client.AppsV1Api.create_namespaced_daemon_set")
-    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.client.AppsV1Api.create_namespaced_daemon_set")
+    @patch("ray_provider.hooks.config.load_kube_config")
     def test_create_daemon_set_no_body(
         self, mock_load_kube_config, mock_create_daemon_set, mock_kubernetes_init, mock_get_connection
     ):
@@ -505,10 +505,10 @@ class TestRayHook:
 
         assert daemon_set is None
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.client.AppsV1Api.create_namespaced_daemon_set")
-    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.client.AppsV1Api.create_namespaced_daemon_set")
+    @patch("ray_provider.hooks.config.load_kube_config")
     def test_create_daemon_set_exception(
         self, mock_load_kube_config, mock_create_daemon_set, mock_kubernetes_init, mock_get_connection
     ):
@@ -522,10 +522,10 @@ class TestRayHook:
 
         assert daemon_set is None
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.client.AppsV1Api.delete_namespaced_daemon_set")
-    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.client.AppsV1Api.delete_namespaced_daemon_set")
+    @patch("ray_provider.hooks.config.load_kube_config")
     def test_delete_daemon_set(
         self, mock_load_kube_config, mock_delete_daemon_set, mock_kubernetes_init, mock_get_connection
     ):
@@ -538,10 +538,10 @@ class TestRayHook:
 
         assert response.status == "Success"
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.client.AppsV1Api.delete_namespaced_daemon_set")
-    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.client.AppsV1Api.delete_namespaced_daemon_set")
+    @patch("ray_provider.hooks.config.load_kube_config")
     def test_delete_daemon_set_not_found(
         self, mock_load_kube_config, mock_delete_daemon_set, mock_kubernetes_init, mock_get_connection
     ):
@@ -554,10 +554,10 @@ class TestRayHook:
 
         assert response is None
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
-    @patch("ray_provider.hooks.ray.client.AppsV1Api.delete_namespaced_daemon_set")
-    @patch("ray_provider.hooks.ray.config.load_kube_config")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.client.AppsV1Api.delete_namespaced_daemon_set")
+    @patch("ray_provider.hooks.config.load_kube_config")
     def test_delete_daemon_set_exception(
         self, mock_load_kube_config, mock_delete_daemon_set, mock_kubernetes_init, mock_get_connection
     ):
@@ -570,8 +570,8 @@ class TestRayHook:
 
         assert response is None
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
     @patch("os.path.isfile")
     def test_validate_yaml_file_not_found(self, mock_is_file, mock_kubernetes_init, mock_get_connection):
         mock_kubernetes_init.return_value = None
@@ -584,8 +584,8 @@ class TestRayHook:
 
         assert "The specified YAML file does not exist" in str(exc_info.value)
 
-    @patch("ray_provider.hooks.ray.KubernetesHook.get_connection")
-    @patch("ray_provider.hooks.ray.KubernetesHook.__init__")
+    @patch("ray_provider.hooks.KubernetesHook.get_connection")
+    @patch("ray_provider.hooks.KubernetesHook.__init__")
     @patch("os.path.isfile")
     def test_validate_yaml_file_invalid_extension(self, mock_is_file, mock_kubernetes_init, mock_get_connection):
         mock_kubernetes_init.return_value = None
@@ -598,13 +598,13 @@ class TestRayHook:
 
         assert "The specified YAML file must have a .yaml or .yml extension" in str(exc_info.value)
 
-    @patch("ray_provider.hooks.ray.RayHook._validate_yaml_file")
-    @patch("ray_provider.hooks.ray.RayHook.install_kuberay_operator")
-    @patch("ray_provider.hooks.ray.RayHook.load_yaml_content")
-    @patch("ray_provider.hooks.ray.RayHook.get_custom_object")
-    @patch("ray_provider.hooks.ray.RayHook.create_custom_object")
-    @patch("ray_provider.hooks.ray.RayHook._setup_gpu_driver")
-    @patch("ray_provider.hooks.ray.RayHook._setup_load_balancer")
+    @patch("ray_provider.hooks.RayHook._validate_yaml_file")
+    @patch("ray_provider.hooks.RayHook.install_kuberay_operator")
+    @patch("ray_provider.hooks.RayHook.load_yaml_content")
+    @patch("ray_provider.hooks.RayHook.get_custom_object")
+    @patch("ray_provider.hooks.RayHook.create_custom_object")
+    @patch("ray_provider.hooks.RayHook._setup_gpu_driver")
+    @patch("ray_provider.hooks.RayHook._setup_load_balancer")
     def test_setup_ray_cluster_success(
         self,
         mock_setup_load_balancer,
@@ -639,13 +639,13 @@ class TestRayHook:
         mock_setup_gpu_driver.assert_called_once_with(gpu_device_plugin_yaml="gpu.yaml")
         mock_setup_load_balancer.assert_called_once()
 
-    @patch("ray_provider.hooks.ray.RayHook._validate_yaml_file")
-    @patch("ray_provider.hooks.ray.RayHook.uninstall_kuberay_operator")
-    @patch("ray_provider.hooks.ray.RayHook.load_yaml_content")
-    @patch("ray_provider.hooks.ray.RayHook.get_custom_object")
-    @patch("ray_provider.hooks.ray.RayHook.delete_custom_object")
-    @patch("ray_provider.hooks.ray.RayHook.get_daemon_set")
-    @patch("ray_provider.hooks.ray.RayHook.delete_daemon_set")
+    @patch("ray_provider.hooks.RayHook._validate_yaml_file")
+    @patch("ray_provider.hooks.RayHook.uninstall_kuberay_operator")
+    @patch("ray_provider.hooks.RayHook.load_yaml_content")
+    @patch("ray_provider.hooks.RayHook.get_custom_object")
+    @patch("ray_provider.hooks.RayHook.delete_custom_object")
+    @patch("ray_provider.hooks.RayHook.get_daemon_set")
+    @patch("ray_provider.hooks.RayHook.delete_daemon_set")
     def test_delete_ray_cluster_success(
         self,
         mock_delete_daemon_set,
@@ -677,15 +677,15 @@ class TestRayHook:
         mock_delete_custom_object.assert_called_once()
         mock_uninstall_kuberay_operator.assert_called_once()
 
-    @patch("ray_provider.hooks.ray.JobSubmissionClient")
+    @patch("ray_provider.hooks.JobSubmissionClient")
     def test_ray_client_exception(self, mock_job_client, ray_hook):
         mock_job_client.side_effect = Exception("Connection failed")
         with pytest.raises(AirflowException) as exc_info:
             ray_hook.ray_client()
         assert str(exc_info.value) == "Failed to create Ray JobSubmissionClient: Connection failed"
 
-    @patch("ray_provider.hooks.ray.RayHook.get_custom_object")
-    @patch("ray_provider.hooks.ray.RayHook.create_custom_object")
+    @patch("ray_provider.hooks.RayHook.get_custom_object")
+    @patch("ray_provider.hooks.RayHook.create_custom_object")
     def test_create_or_update_cluster_exception(self, mock_create, mock_get, ray_hook):
         mock_get.side_effect = client.exceptions.ApiException(status=500, reason="Internal Server Error")
         with pytest.raises(AirflowException) as exc_info:
@@ -700,8 +700,8 @@ class TestRayHook:
             )
         assert "Error accessing Ray cluster 'test-cluster'" in str(exc_info.value)
 
-    @patch("ray_provider.hooks.ray.RayHook.get_custom_object")
-    @patch("ray_provider.hooks.ray.RayHook.custom_object_client")
+    @patch("ray_provider.hooks.RayHook.get_custom_object")
+    @patch("ray_provider.hooks.RayHook.custom_object_client")
     def test_create_or_update_cluster_update(self, mock_client, mock_get, ray_hook):
         mock_get.return_value = {"metadata": {"name": "test-cluster"}}
         ray_hook._create_or_update_cluster(
@@ -722,12 +722,12 @@ class TestRayHook:
             body={"spec": {"some": "config"}},
         )
 
-    @patch("ray_provider.hooks.ray.RayHook._validate_yaml_file")
-    @patch("ray_provider.hooks.ray.RayHook.install_kuberay_operator")
-    @patch("ray_provider.hooks.ray.RayHook.load_yaml_content")
-    @patch("ray_provider.hooks.ray.RayHook._create_or_update_cluster")
-    @patch("ray_provider.hooks.ray.RayHook._setup_gpu_driver")
-    @patch("ray_provider.hooks.ray.RayHook._setup_load_balancer")
+    @patch("ray_provider.hooks.RayHook._validate_yaml_file")
+    @patch("ray_provider.hooks.RayHook.install_kuberay_operator")
+    @patch("ray_provider.hooks.RayHook.load_yaml_content")
+    @patch("ray_provider.hooks.RayHook._create_or_update_cluster")
+    @patch("ray_provider.hooks.RayHook._setup_gpu_driver")
+    @patch("ray_provider.hooks.RayHook._setup_load_balancer")
     def test_setup_ray_cluster_exception(
         self,
         mock_setup_lb,
@@ -750,13 +750,13 @@ class TestRayHook:
             )
         assert "Failed to set up Ray cluster: Cluster creation failed" in str(exc_info.value)
 
-    @patch("ray_provider.hooks.ray.RayHook._validate_yaml_file")
-    @patch("ray_provider.hooks.ray.RayHook.load_yaml_content")
-    @patch("ray_provider.hooks.ray.RayHook.get_custom_object")
-    @patch("ray_provider.hooks.ray.RayHook.delete_custom_object")
-    @patch("ray_provider.hooks.ray.RayHook.get_daemon_set")
-    @patch("ray_provider.hooks.ray.RayHook.delete_daemon_set")
-    @patch("ray_provider.hooks.ray.RayHook.uninstall_kuberay_operator")
+    @patch("ray_provider.hooks.RayHook._validate_yaml_file")
+    @patch("ray_provider.hooks.RayHook.load_yaml_content")
+    @patch("ray_provider.hooks.RayHook.get_custom_object")
+    @patch("ray_provider.hooks.RayHook.delete_custom_object")
+    @patch("ray_provider.hooks.RayHook.get_daemon_set")
+    @patch("ray_provider.hooks.RayHook.delete_daemon_set")
+    @patch("ray_provider.hooks.RayHook.uninstall_kuberay_operator")
     def test_delete_ray_cluster_exception(
         self,
         mock_uninstall_operator,

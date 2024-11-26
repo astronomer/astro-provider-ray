@@ -10,8 +10,8 @@ from airflow.providers.cncf.kubernetes.utils.pod_manager import PodOperatorHookP
 from airflow.utils.context import Context
 from ray.job_submission import JobStatus
 
-from ray_provider.hooks.ray import RayHook
-from ray_provider.triggers.ray import RayJobTrigger
+from ray_provider.hooks import RayHook
+from ray_provider.triggers import RayJobTrigger
 
 
 class SetupRayCluster(BaseOperator):

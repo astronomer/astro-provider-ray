@@ -3,7 +3,7 @@ from pathlib import Path
 
 from airflow.decorators import dag, task
 
-from ray_provider.decorators.ray import ray
+from ray_provider.decorators import ray
 
 CONN_ID = "ray_job"
 FOLDER_PATH = Path(__file__).parent / "ray_scripts"

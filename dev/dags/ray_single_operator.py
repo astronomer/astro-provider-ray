@@ -3,7 +3,7 @@ from pathlib import Path
 
 from airflow import DAG
 
-from ray_provider.operators.ray import SubmitRayJob
+from ray_provider.operators import SubmitRayJob
 
 CONN_ID = "ray_conn"
 RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"

@@ -5,7 +5,7 @@ import pytest
 from airflow.triggers.base import TriggerEvent
 from ray.job_submission import JobStatus
 
-from ray_provider.triggers.ray import RayJobTrigger
+from ray_provider.triggers import RayJobTrigger
 
 
 class TestRayJobTrigger:
@@ -22,8 +22,8 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
-    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    @patch("ray_provider.triggers.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.RayJobTrigger.hook")
     async def test_run_no_job_id(self, mock_hook, mock_is_terminal):
         mock_is_terminal.return_value = True
         mock_hook.get_ray_job_status.return_value = JobStatus.FAILED
@@ -42,8 +42,8 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
-    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    @patch("ray_provider.triggers.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.RayJobTrigger.hook")
     async def test_run_job_succeeded(self, mock_hook, mock_is_terminal):
         mock_is_terminal.side_effect = [False, True]
         mock_hook.get_ray_job_status.return_value = JobStatus.SUCCEEDED
@@ -66,8 +66,8 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
-    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    @patch("ray_provider.triggers.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.RayJobTrigger.hook")
     async def test_run_job_stopped(self, mock_hook, mock_is_terminal, trigger):
         mock_is_terminal.side_effect = [False, True]
         mock_hook.get_ray_job_status.return_value = JobStatus.STOPPED
@@ -84,8 +84,8 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
-    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    @patch("ray_provider.triggers.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.RayJobTrigger.hook")
     async def test_run_job_failed(self, mock_hook, mock_is_terminal, trigger):
         mock_is_terminal.side_effect = [False, True]
         mock_hook.get_ray_job_status.return_value = JobStatus.FAILED
@@ -102,9 +102,9 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
-    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
-    @patch("ray_provider.triggers.ray.RayJobTrigger._stream_logs")
+    @patch("ray_provider.triggers.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.RayJobTrigger.hook")
+    @patch("ray_provider.triggers.RayJobTrigger._stream_logs")
     async def test_run_with_log_streaming(self, mock_stream_logs, mock_hook, mock_is_terminal, trigger):
         mock_is_terminal.side_effect = [False, True]
         mock_hook.get_ray_job_status.return_value = JobStatus.SUCCEEDED
@@ -123,7 +123,7 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    @patch("ray_provider.triggers.RayJobTrigger.hook")
     async def test_stream_logs(self, mock_hook, trigger):
         # Create a mock async iterator
         async def mock_async_iterator():
@@ -133,7 +133,7 @@ class TestRayJobTrigger:
         # Set up the mock to return an async iterator
         mock_hook.get_ray_tail_logs.return_value = mock_async_iterator()
 
-        with patch("ray_provider.triggers.ray.RayJobTrigger.log") as mock_log:
+        with patch("ray_provider.triggers.RayJobTrigger.log") as mock_log:
             await trigger._stream_logs()
 
             mock_log.info.assert_any_call("::group::test_job_id logs")
@@ -144,7 +144,7 @@ class TestRayJobTrigger:
     def test_serialize(self, trigger):
         serialized = trigger.serialize()
         assert serialized == (
-            "ray_provider.triggers.ray.RayJobTrigger",
+            "ray_provider.triggers.RayJobTrigger",
             {
                 "job_id": "test_job_id",
                 "conn_id": "test_conn",
@@ -157,7 +157,7 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
+    @patch("ray_provider.triggers.RayJobTrigger.hook")
     async def test_is_terminal_state(self, mock_hook, trigger):
         mock_hook.get_ray_job_status.side_effect = [
             JobStatus.PENDING,
@@ -212,7 +212,7 @@ class TestRayJobTrigger:
 
     @pytest.mark.asyncio
     @patch("asyncio.sleep", new_callable=AsyncMock)
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.RayJobTrigger._is_terminal_state")
     async def test_poll_status(self, mock_is_terminal, mock_sleep, trigger):
         mock_is_terminal.side_effect = [False, False, True]
 
@@ -222,9 +222,9 @@ class TestRayJobTrigger:
         mock_sleep.assert_called_with(1)
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.ray.RayJobTrigger._is_terminal_state")
-    @patch("ray_provider.triggers.ray.RayJobTrigger.hook")
-    @patch("ray_provider.triggers.ray.RayJobTrigger.cleanup")
+    @patch("ray_provider.triggers.RayJobTrigger._is_terminal_state")
+    @patch("ray_provider.triggers.RayJobTrigger.hook")
+    @patch("ray_provider.triggers.RayJobTrigger.cleanup")
     async def test_run_with_exception(self, mock_cleanup, mock_hook, mock_is_terminal, trigger):
         mock_is_terminal.side_effect = Exception("Test exception")
 
