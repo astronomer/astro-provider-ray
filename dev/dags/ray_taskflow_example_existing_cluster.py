@@ -3,9 +3,9 @@ from pathlib import Path
 
 from airflow.decorators import dag, task
 
-from ray_provider.decorators.ray import ray
+from ray_provider.decorators import ray
 
-CONN_ID = "ray_job"
+CONN_ID = "ray_conn"
 FOLDER_PATH = Path(__file__).parent / "ray_scripts"
 RAY_TASK_CONFIG = {
     "conn_id": CONN_ID,

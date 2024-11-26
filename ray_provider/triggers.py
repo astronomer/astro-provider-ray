@@ -7,7 +7,7 @@ from typing import Any, AsyncIterator
 from airflow.triggers.base import BaseTrigger, TriggerEvent
 from ray.job_submission import JobStatus
 
-from ray_provider.hooks.ray import RayHook
+from ray_provider.hooks import RayHook
 
 
 class RayJobTrigger(BaseTrigger):
@@ -51,7 +51,7 @@ class RayJobTrigger(BaseTrigger):
         :return: A tuple containing the fully qualified class name and a dictionary of its parameters.
         """
         return (
-            "ray_provider.triggers.ray.RayJobTrigger",
+            "ray_provider.triggers.RayJobTrigger",
             {
                 "job_id": self.job_id,
                 "conn_id": self.conn_id,
@@ -81,18 +81,15 @@ class RayJobTrigger(BaseTrigger):
         resources are not deleted.
 
         """
-        try:
-            if self.ray_cluster_yaml:
-                self.log.info(f"Attempting to delete Ray cluster using YAML: {self.ray_cluster_yaml}")
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(
-                    None, self.hook.delete_ray_cluster, self.ray_cluster_yaml, self.gpu_device_plugin_yaml
-                )
-                self.log.info("Ray cluster deletion process completed")
-            else:
-                self.log.info("No Ray cluster YAML provided, skipping cluster deletion")
-        except Exception as e:
-            self.log.error(f"Unexpected error during cleanup: {str(e)}")
+        if self.ray_cluster_yaml:
+            self.log.info(f"Attempting to delete Ray cluster using YAML: {self.ray_cluster_yaml}")
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None, self.hook.delete_ray_cluster, self.ray_cluster_yaml, self.gpu_device_plugin_yaml
+            )
+            self.log.info("Ray cluster deletion process completed")
+        else:
+            self.log.info("No Ray cluster YAML provided, skipping cluster deletion")
 
     async def _poll_status(self) -> None:
         while not self._is_terminal_state():
@@ -118,28 +115,34 @@ class RayJobTrigger(BaseTrigger):
 
         :yield: TriggerEvent containing the status, message, and job ID related to the job.
         """
-        try:
-            self.log.info(f"Polling for job {self.job_id} every {self.poll_interval} seconds...")
+        # This is used indirectly when the Ray decorator is used.
+        # If not imported, DAGs that used the Ray decorator fail when triggered
 
-            tasks = [self._poll_status()]
-            if self.fetch_logs:
-                tasks.append(self._stream_logs())
+        self.log.info(f"::group:: Trigger 1/2: Checking the job status")
+        self.log.info(f"Polling for job {self.job_id} every {self.poll_interval} seconds...")
 
-            await asyncio.gather(*tasks)
+        tasks = [self._poll_status()]
+        if self.fetch_logs:
+            tasks.append(self._stream_logs())
+        self.log.info(f"::endgroup::")
+        await asyncio.gather(*tasks)
 
-            completed_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
-            self.log.info(f"Status of completed job {self.job_id} is: {completed_status}")
-            yield TriggerEvent(
-                {
-                    "status": completed_status,
-                    "message": f"Job {self.job_id} completed with status {completed_status}",
-                    "job_id": self.job_id,
-                }
-            )
-        except Exception as e:
-            self.log.error(f"Error occurred: {str(e)}")
-            await self.cleanup()
-            yield TriggerEvent({"status": str(JobStatus.FAILED), "message": str(e), "job_id": self.job_id})
+        self.log.info(f"::group:: Trigger 2/2: Job reached a terminal state")
+        completed_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
+        self.log.info(f"Status of completed job {self.job_id} is: {completed_status}")
+        self.log.info(f"::endgroup::")
+
+        yield TriggerEvent(
+            {
+                "status": completed_status,
+                "message": f"Job {self.job_id} completed with status {completed_status}",
+                "job_id": self.job_id,
+            }
+        )
+        #except Exception as e:
+        #    self.log.error(f"Error occurred: {str(e)}")
+        #    await self.cleanup()
+        #    yield TriggerEvent({"status": str(JobStatus.FAILED), "message": str(e), "job_id": self.job_id})
 
     def _is_terminal_state(self) -> bool:
         """

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from airflow import DAG
 
-from ray_provider.operators.ray import DeleteRayCluster, SetupRayCluster, SubmitRayJob
+from ray_provider.operators import DeleteRayCluster, SetupRayCluster, SubmitRayJob
 
 CONN_ID = "ray_conn"
 RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
@@ -42,3 +42,4 @@ with DAG(
     # Create ray cluster and submit ray job
     setup_cluster.as_setup() >> submit_ray_job >> delete_cluster.as_teardown()
     setup_cluster >> delete_cluster
+

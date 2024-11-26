@@ -5,7 +5,8 @@ import pytest
 from airflow.exceptions import AirflowException
 from airflow.utils.context import Context
 
-from ray_provider.decorators.ray import _RayDecoratedOperator, ray
+from ray_provider.decorators import _RayDecoratedOperator
+from ray_provider.decorators import ray as ray_decorator
 
 
 class TestRayDecoratedOperator:
@@ -81,7 +82,7 @@ class TestRayDecoratedOperator:
             _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
 
     @patch.object(_RayDecoratedOperator, "_extract_function_body")
-    @patch("ray_provider.decorators.ray.SubmitRayJob.execute")
+    @patch("ray_provider.decorators.SubmitRayJob.execute")
     def test_execute_decorated_function(self, mock_super_execute, mock_extract_function_body):
         config = {
             "runtime_env": {"pip": ["ray"]},
@@ -101,7 +102,7 @@ class TestRayDecoratedOperator:
         assert operator.entrypoint == "python script.py"
         assert "working_dir" in operator.runtime_env
 
-    @patch("ray_provider.decorators.ray.SubmitRayJob.execute")
+    @patch("ray_provider.decorators.SubmitRayJob.execute")
     def test_execute_with_entrypoint(self, mock_super_execute):
         config = {
             "entrypoint": "python my_script.py",
@@ -119,7 +120,7 @@ class TestRayDecoratedOperator:
         assert result == "success"
         assert operator.entrypoint == "python my_script.py"
 
-    @patch("ray_provider.decorators.ray.SubmitRayJob.execute")
+    @patch("ray_provider.decorators.SubmitRayJob.execute")
     def test_execute_failure(self, mock_super_execute):
         config = {}
 
@@ -136,14 +137,14 @@ class TestRayDecoratedOperator:
     def test_extract_function_body(self):
         config = {}
 
-        @ray.task()
+        @ray_decorator.task()
         def dummy_callable():
             return "dummy"
 
         operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
 
         function_body = operator._extract_function_body(
-            """@ray.task()
+            """@ray_decorator.task()
         def dummy_callable():
             return "dummy"
         """
@@ -158,7 +159,7 @@ class TestRayDecoratedOperator:
 
 class TestRayTaskDecorator:
     def test_ray_task_decorator(self):
-        @ray.task()
+        @ray_decorator.task()
         def dummy_function():
             return "dummy"
 
@@ -167,7 +168,7 @@ class TestRayTaskDecorator:
         assert dummy_function.operator_class == _RayDecoratedOperator
 
     def test_ray_task_decorator_with_multiple_outputs(self):
-        @ray.task(multiple_outputs=True)
+        @ray_decorator.task(multiple_outputs=True)
         def dummy_function():
             return {"key": "value"}
 
@@ -182,7 +183,7 @@ class TestRayTaskDecorator:
             "memory": 1024,
         }
 
-        @ray.task(**config)
+        @ray_decorator.task(**config)
         def dummy_function():
             return "dummy"
 
