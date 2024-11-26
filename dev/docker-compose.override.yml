@@ -2,17 +2,14 @@ version: '3.8'
 
 services:
   webserver:
-    #image: dev_c226a1/airflow:latest
     networks:
       - kind
 
   scheduler:
-    #image: dev_c226a1/airflow:latest
     networks:
       - kind
 
   triggerer:
-    #image: dev_c226a1/airflow:latest
     networks:
       - kind
 
