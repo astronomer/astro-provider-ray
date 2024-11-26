@@ -356,4 +356,3 @@ The most basic setup will look something like below:
 - Disable SSL: Tick the disable SSL boolean if needed
 
 .. image::  ../_static/basic_local_kubernetes_conn.png
-
