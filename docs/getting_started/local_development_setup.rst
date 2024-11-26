@@ -87,6 +87,11 @@ b) Otherwise, if planning to access Kind from Airflow **outside of Astro CLi**, 
 
 3. **Deploy a RayCluster Custom Resource**
 
+The following configuration applies to running in MacOS M1 machines. Read the
+`official documentation <https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/raycluster-quick-start.html#raycluster-quickstart>`_
+for deploying a RayCluster in other architectures.
+
+
 .. code-block:: bash
 
     # Deploy a sample RayCluster CR from the KubeRay Helm chart repo:
