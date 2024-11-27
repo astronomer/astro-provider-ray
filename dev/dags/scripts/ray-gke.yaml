@@ -1,0 +1,62 @@
+apiVersion: ray.io/v1
+kind: RayCluster
+metadata:
+  name: raycluster-complete
+spec:
+  rayVersion: "2.10.0"
+  enableInTreeAutoscaling: true
+  headGroupSpec:
+    serviceType: LoadBalancer
+    rayStartParams:
+      dashboard-host: "0.0.0.0"
+      block: "true"
+    template:
+      metadata:
+        labels:
+          ray-node-type: head
+      spec:
+        containers:
+        - name: ray-head
+          image: rayproject/ray-ml:latest
+          resources:
+            limits:
+              cpu: 1
+              memory: 3Gi
+            requests:
+              cpu: 1
+              memory: 3Gi
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","ray stop"]
+          ports:
+          - containerPort: 6379
+            name: gcs
+          - containerPort: 8265
+            name: dashboard
+          - containerPort: 10001
+            name: client
+          - containerPort: 8000
+            name: serve
+          - containerPort: 8080
+            name: metrics
+  workerGroupSpecs:
+  - groupName: small-group
+    replicas: 1
+    minReplicas: 1
+    maxReplicas: 2
+    rayStartParams:
+      block: "true"
+    template:
+      metadata:
+      spec:
+        containers:
+        - name: machine-learning
+          image: rayproject/ray-ml:latest
+          resources:
+            limits:
+              cpu: 1
+              memory: 1Gi
+            requests:
+              cpu: 1
+              memory: 1Gi
