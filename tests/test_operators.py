@@ -5,14 +5,14 @@ import pytest
 from airflow.exceptions import AirflowException, TaskDeferred
 from ray.job_submission import JobStatus
 
-from ray_provider.operators.ray import DeleteRayCluster, SetupRayCluster, SubmitRayJob
-from ray_provider.triggers.ray import RayJobTrigger
+from ray_provider.operators import DeleteRayCluster, SetupRayCluster, SubmitRayJob
+from ray_provider.triggers import RayJobTrigger
 
 
 class TestSetupRayCluster:
     @pytest.fixture
     def mock_hook(self):
-        with patch("ray_provider.operators.ray.RayHook") as mock:
+        with patch("ray_provider.operators.RayHook") as mock:
             yield mock.return_value
 
     @pytest.fixture
@@ -48,7 +48,7 @@ class TestSetupRayCluster:
         assert operator.update_if_exists is False
 
     def test_hook_property(self, operator):
-        with patch("ray_provider.operators.ray.RayHook") as mock_ray_hook:
+        with patch("ray_provider.operators.RayHook") as mock_ray_hook:
             hook = operator.hook
             mock_ray_hook.assert_called_once_with(conn_id=operator.conn_id)
             assert hook == mock_ray_hook.return_value
@@ -68,7 +68,7 @@ class TestSetupRayCluster:
 class TestDeleteRayCluster:
     @pytest.fixture
     def mock_hook(self):
-        with patch("ray_provider.operators.ray.RayHook") as mock:
+        with patch("ray_provider.operators.RayHook") as mock:
             yield mock.return_value
 
     @pytest.fixture
@@ -98,7 +98,7 @@ class TestDeleteRayCluster:
         )
 
     def test_hook_property(self, operator):
-        with patch("ray_provider.operators.ray.RayHook") as mock_ray_hook:
+        with patch("ray_provider.operators.RayHook") as mock_ray_hook:
             hook = operator.hook
             mock_ray_hook.assert_called_once_with(conn_id=operator.conn_id)
             assert hook == mock_ray_hook.return_value
@@ -113,7 +113,7 @@ class TestSubmitRayJob:
 
     @pytest.fixture
     def mock_hook(self):
-        with patch("ray_provider.operators.ray.RayHook") as mock:
+        with patch("ray_provider.operators.RayHook") as mock:
             yield mock.return_value
 
     @pytest.fixture
@@ -228,7 +228,7 @@ class TestSubmitRayJob:
 
         assert result is None
 
-    @patch("ray_provider.operators.ray.RayHook")
+    @patch("ray_provider.operators.RayHook")
     def test_setup_cluster(self, mock_ray_hook, context):
         operator = SubmitRayJob(
             task_id="test_task",
@@ -254,7 +254,7 @@ class TestSubmitRayJob:
             update_if_exists=True,
         )
 
-    @patch("ray_provider.operators.ray.RayHook")
+    @patch("ray_provider.operators.RayHook")
     def test_delete_cluster(self, mock_ray_hook):
         operator = SubmitRayJob(
             task_id="test_task",
@@ -371,7 +371,7 @@ class TestSubmitRayJob:
             "job_timeout_seconds",
         )
 
-    @patch("ray_provider.operators.ray.RayHook")
+    @patch("ray_provider.operators.RayHook")
     def test_setup_cluster_exception(self, mock_ray_hook, context):
         operator = SubmitRayJob(
             task_id="test_task",
@@ -392,7 +392,7 @@ class TestSubmitRayJob:
         assert str(exc_info.value) == "Cluster setup failed"
         mock_hook.setup_ray_cluster.assert_called_once()
 
-    @patch("ray_provider.operators.ray.RayHook")
+    @patch("ray_provider.operators.RayHook")
     def test_delete_cluster_exception(self, mock_ray_hook):
         operator = SubmitRayJob(
             task_id="test_task",

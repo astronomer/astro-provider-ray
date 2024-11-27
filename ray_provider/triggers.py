@@ -7,7 +7,7 @@ from typing import Any, AsyncIterator
 from airflow.triggers.base import BaseTrigger, TriggerEvent
 from ray.job_submission import JobStatus
 
-from ray_provider.hooks.ray import RayHook
+from ray_provider.hooks import RayHook
 
 
 class RayJobTrigger(BaseTrigger):
@@ -51,7 +51,7 @@ class RayJobTrigger(BaseTrigger):
         :return: A tuple containing the fully qualified class name and a dictionary of its parameters.
         """
         return (
-            "ray_provider.triggers.ray.RayJobTrigger",
+            "ray_provider.triggers.RayJobTrigger",
             {
                 "job_id": self.job_id,
                 "conn_id": self.conn_id,

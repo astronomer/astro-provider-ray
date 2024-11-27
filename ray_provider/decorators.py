@@ -12,7 +12,7 @@ from airflow.decorators.base import DecoratedOperator, TaskDecorator, task_decor
 from airflow.exceptions import AirflowException
 from airflow.utils.context import Context
 
-from ray_provider.operators.ray import SubmitRayJob
+from ray_provider.operators import SubmitRayJob
 
 
 class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):

@@ -4,15 +4,15 @@ display-name: Ray
 docs-url: https://github.com/astronomer/astro-provider-ray/blob/main/README.md
 
 hooks:
-  - module: ray_provider.hooks.ray.RayHook
+  - module: ray_provider.hooks.RayHook
 
 decorators:
-  - module: ray_provider.decorators.ray.ray
+  - module: ray_provider.decorators.ray
 
 operators:
-  - module: ray_provider.operators.ray.SetupRayCluster
-  - module: ray_provider.operators.ray.SubmitRayJob
-  - module: ray_provider.operators.ray.DeleteRayCluster
+  - module: ray_provider.operators.SetupRayCluster
+  - module: ray_provider.operators.SubmitRayJob
+  - module: ray_provider.operators.DeleteRayCluster
 
 triggers:
-  - module: ray_provider.triggers.ray.RayJobTrigger
+  - module: ray_provider.triggers.RayJobTrigger

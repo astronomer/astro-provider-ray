@@ -5,7 +5,7 @@ import pytest
 from airflow.exceptions import AirflowException
 from airflow.utils.context import Context
 
-from ray_provider.decorators.ray import _RayDecoratedOperator, ray
+from ray_provider.decorators import _RayDecoratedOperator, ray
 
 
 class TestRayDecoratedOperator:
@@ -81,7 +81,7 @@ class TestRayDecoratedOperator:
             _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
 
     @patch.object(_RayDecoratedOperator, "_extract_function_body")
-    @patch("ray_provider.decorators.ray.SubmitRayJob.execute")
+    @patch("ray_provider.decorators.SubmitRayJob.execute")
     def test_execute_decorated_function(self, mock_super_execute, mock_extract_function_body):
         config = {
             "runtime_env": {"pip": ["ray"]},
@@ -101,7 +101,7 @@ class TestRayDecoratedOperator:
         assert operator.entrypoint == "python script.py"
         assert "working_dir" in operator.runtime_env
 
-    @patch("ray_provider.decorators.ray.SubmitRayJob.execute")
+    @patch("ray_provider.decorators.SubmitRayJob.execute")
     def test_execute_with_entrypoint(self, mock_super_execute):
         config = {
             "entrypoint": "python my_script.py",
@@ -119,7 +119,7 @@ class TestRayDecoratedOperator:
         assert result == "success"
         assert operator.entrypoint == "python my_script.py"
 
-    @patch("ray_provider.decorators.ray.SubmitRayJob.execute")
+    @patch("ray_provider.decorators.SubmitRayJob.execute")
     def test_execute_failure(self, mock_super_execute):
         config = {}
 
