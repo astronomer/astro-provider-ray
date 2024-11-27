@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  webserver:
+    networks:
+      - kind
+
+  scheduler:
+    networks:
+      - kind
+
+  triggerer:
+    networks:
+      - kind
+
+networks:
+  kind:
+    external: true
