@@ -188,8 +188,11 @@ jobs:
           echo "Waiting for MetalLB controller and webhook to be ready..."
           kubectl get pods -n metallb-system --show-labels
           sleep 30
-          #kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=controller --timeout=120s
-          #kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=webhook --timeout=120s
+          kubectl get pods -n metallb-system --show-labels
+          sleep 30
+          kubectl get pods -n metallb-system --show-labels
+          kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=metallb,component=controller --timeout=300s
+          kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=metallb,component=speaker --timeout=300s
 
       - name: Configure IPAddressPool
         run: |
