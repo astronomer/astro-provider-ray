@@ -134,7 +134,7 @@ jobs:
 
       - name: Run integration tests
         run: |
-          hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-integration
+          hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-integration-gke
         env:
           RAY_SPEC_FILENAME: "ray-linux.yaml"
           USE_GKE: 1
@@ -187,12 +187,11 @@ jobs:
         run: |
           echo "Waiting for MetalLB controller and webhook to be ready..."
           kubectl get pods -n metallb-system --show-labels
-          sleep 30
-          kubectl get pods -n metallb-system --show-labels
-          sleep 30
-          kubectl get pods -n metallb-system --show-labels
-          kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=metallb,component=controller --timeout=300s
-          kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=metallb,component=speaker --timeout=300s
+          kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=metallb,component=controller --timeout=120s
+          kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=metallb,component=speaker --timeout=120s
+          kubectl logs -n metallb-system -l app=metallb
+          kubectl describe ipaddresspool kind-pool -n metallb-system
+
 
       - name: Configure IPAddressPool
         run: |
@@ -222,7 +221,7 @@ jobs:
 
       - name: Run integration tests in Kind
         run: |
-          hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-integration
+          hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-integration-kind
         env:
           RAY_SPEC_FILENAME: "ray-linux.yaml"
           AIRFLOW_HOME: /home/runner/work/astro-provider-ray/astro-provider-ray/

@@ -41,6 +41,7 @@ def setup_airflow_db():
             conn_id=conn_id,
             conn_type="ray",
             extra={
+                "address": "http://0.0.0.0:8265/",
                 "kube_config_path": os.environ.get("KUBECONFIG"),
                 "namespace": "ray",
                 "cluster_context": None,  # Set to None as we don't know how to get cluster context for a kind cluster
@@ -59,11 +60,5 @@ print(f"Discovered DAGs: {dags}")
 def test_dag_runs(setup_airflow_db, dag_id, dag, fileloc):
     print(f"Testing DAG: {dag_id}, located at: {fileloc}")
     assert dag is not None, f"DAG {dag_id} not found!"
-
-    if os.getenv("USE_GKE", ""):
-        if dag_id != "Ray_Taskflow_Example":
-            pytest.skip(f"Currently untested {dag_id}")
-            return
-
     dr = dag.test()
     assert dr.state == "success"

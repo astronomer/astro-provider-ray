@@ -318,7 +318,7 @@ class RayHook(KubernetesHook):  # type: ignore
         service_name: str,
         namespace: str = "default",
         max_retries: int = 30,
-        retry_interval: int = 40,
+        retry_interval: int = 15,
     ) -> dict[str, Any]:
         """
         Wait for the LoadBalancer to be ready and return its details.
