@@ -34,7 +34,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-        airflow-version: ["2.7", "2.8", "2.9"]
+        airflow-version: ["2.7", "2.8", "2.9", "2.10"]
         exclude:
           - python-version: "3.12"
             airflow-version: "2.7"
@@ -74,7 +74,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-        airflow-version: ["2.9"]
+        airflow-version: ["2.10"]
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -135,6 +135,9 @@ jobs:
       - name: Run integration tests
         run: |
           hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-integration
+        env:
+          RAY_SPEC_FILENAME: "ray-gke.yaml"
+
       - name: Upload coverage to Github
         uses: actions/upload-artifact@v4
         with:

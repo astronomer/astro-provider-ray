@@ -3,10 +3,12 @@ from __future__ import annotations
 import inspect
 import os
 import re
+import shutil
 import tempfile
 import textwrap
 from datetime import timedelta
 from pathlib import Path
+from tempfile import mkdtemp
 from typing import Any, Callable
 
 from airflow.decorators.base import DecoratedOperator, TaskDecorator, task_decorator_factory
@@ -80,6 +82,8 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         self.poll_interval: int = config.get("poll_interval", 60)
         self.xcom_task_key: str | None = config.get("xcom_task_key")
 
+        self.config = config
+
         if not isinstance(self.num_cpus, (int, float)):
             raise TypeError("num_cpus should be an integer or float value")
         if not isinstance(self.num_gpus, (int, float)):
@@ -147,7 +151,6 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
         # Dedent the body
         return textwrap.dedent(body)
-
 
 class ray:
     @staticmethod

@@ -6,11 +6,6 @@ networking:
   apiServerPort: 6443
 nodes:
   - role: control-plane
-    #extraPortMappings:
-    #  - containerPort: 30000
-    #    hostPort: 30000
-    #    listenAddress: "0.0.0.0"
-    #    protocol: tcp
 kubeadmConfigPatchesJSON6902:
 - group: kubeadm.k8s.io
   version: v1beta3

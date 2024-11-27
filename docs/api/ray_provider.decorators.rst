@@ -2,7 +2,7 @@
 Decorators
 ----------
 
-.. automodule:: ray_provider.decorators.ray
+.. automodule:: ray_provider.decorators
    :members:
    :undoc-members:
    :show-inheritance:

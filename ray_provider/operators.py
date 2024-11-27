@@ -337,6 +337,3 @@ class SubmitRayJob(BaseOperator):
         self.log.info("::endgroup::")
 
         raise AirflowException(msg)
-
-
-

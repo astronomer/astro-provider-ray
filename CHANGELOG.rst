@@ -1,9 +1,8 @@
 CHANGELOG
 =========
 
-
 0.3.0a7 (2024-11-27)
-------------------
+---------------------
 
 **Breaking changes**
 
@@ -50,6 +49,7 @@ changed, as documented in the table below:
 * Allow tests to run for PRs from forked repos by @venkatajagannath in #72
 * CI improvement by @venkatajagannath in #73
 * CI fix related to broken coverage upload artifact by @pankajkoti in #60
+
 
 0.2.1 (2024-09-04)
 ------------------

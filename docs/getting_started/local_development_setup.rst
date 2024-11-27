@@ -27,7 +27,8 @@ Install the following software:
 
 1. **Create a Kind Cluster**
 
-(a) If you plan to access the Kind Kubernetes cluster from Airflow using Astro CLI, use the following configuration file,
+a) If you plan to access the Kind Kubernetes cluster from Airflow using Astro CLI, use the following configuration file,
+
 also available in ``dev/kind-config.yaml``, to create the Kind cluster:
 
 .. code-block::
@@ -62,7 +63,7 @@ If you don't do this, Astro CLI will have issues reaching the Kind Kubernetes cl
     [2024-11-19, 14:52:39 UTC] {ray.py:606} ERROR - Standard Error: Error: Kubernetes cluster unreachable: Get "https://host.docker.internal:57034/version": tls: failed to verify certificate: x509: certificate is valid for kind-control-plane, kubernetes, kubernetes.default, kubernetes.default.svc, kubernetes.default.svc.cluster.local, localhost, not host.docker.internal
 
 
-(b) Otherwise, if planning to access Kind from Airflow **outside of Astro CLi**, create a cluster using:
+b) Otherwise, if planning to access Kind from Airflow **outside of Astro CLi**, create a cluster using:
 
 .. code-block:: bash
 
@@ -86,6 +87,11 @@ If you don't do this, Astro CLI will have issues reaching the Kind Kubernetes cl
 
 
 3. **Deploy a RayCluster Custom Resource**
+
+The following configuration applies to running in MacOS M1 machines. Read the
+`official documentation <https://docs.ray.io/en/latest/cluster/kubernetes/getting-started/raycluster-quick-start.html#raycluster-quickstart>`_
+for deploying a RayCluster in other architectures.
+
 
 .. code-block:: bash
 
@@ -121,6 +127,37 @@ Wait for the pods to reach the ``Running`` state
 5. Access the Ray Dashboard
 
 Visit http://127.0.0.1:8265 in your browser.
+
+6. Create a Kubernetes secret with your Docker Hub credentials
+
+We highly encourage users to create a Kubernetes secret containing `Docker hub credentials <https://hub.docker.com/>`_
+and add this to Kind, as illustrated below:
+
+.. code-block:: bash
+
+    kubectl create secret docker-registry my-registry-secret  --docker-server=https://index.docker.io/v1/ --docker-username=<dockerhub-username> --docker-password=<dockerhub-password>
+
+Users should replace ``<dockerhub-username>`` and ``<dockerhub-password>`` with their own credentials.
+
+The goal of this configuration is to overcome a common issue, when Docker Hub blocks Kind from pulling the images necessary to create a Ray cluster.
+The side effect is that the ``raycluster-kuberay-head`` and ``raycluster-kuberay-workergroup``
+Kubernetes Pods will not manage to get into the ``Running`` state. When describing them, users will identify the
+``Error: ImagePullBackOff`` message and:
+
+.. code-block::
+
+    │ image "rayproject/ray-ml:latest": failed to pull and unpack image "docker.io/ray │
+
+When using the Kubernetes secret with Docker hub credentials, such as ``my-registry-secret``,
+users should make sure that their RayCluster K8s YAML contains:
+
+.. code-block::
+
+     spec:
+        imagePullSecrets:
+          - name: my-registry-secret
+
+This approach is illustrated in the file ``dev/dags/scripts/ray.yaml``.
 
 
 Additional steps in MacOS
