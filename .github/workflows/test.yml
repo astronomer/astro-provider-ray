@@ -179,6 +179,27 @@ jobs:
         #with:
         #  config: dev/kind-config.yaml
 
+      - name: Setup LoadBalancer in KinD
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.10/config/manifests/metallb-native.yaml
+          cat <<EOF | kubectl apply -f -
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: kind-pool
+            namespace: metallb-system
+          spec:
+            addresses:
+            - 172.18.255.1-172.18.255.254
+          ---
+          apiVersion: metallb.io/v1beta1
+          kind: L2Advertisement
+          metadata:
+            name: kind-l2-advertisement
+            namespace: metallb-system
+          spec: {}
+          EOF
+
       - name: Install packages and dependencies
         run: |
           python -m pip install uv
