@@ -60,12 +60,10 @@ def test_dag_runs(setup_airflow_db, dag_id, dag, fileloc):
     print(f"Testing DAG: {dag_id}, located at: {fileloc}")
     assert dag is not None, f"DAG {dag_id} not found!"
 
-    if dag_id != "Ray_Taskflow_Example":
-        pytest.skip(f"Currently untested {dag_id}")
-        return
+    if os.getenv("USE_GKE", ""):
+        if dag_id != "Ray_Taskflow_Example":
+            pytest.skip(f"Currently untested {dag_id}")
+            return
 
-    try:
-        dr = dag.test()
-        assert dr.state == "success"
-    except Exception as e:
-        pytest.fail(f"Error running DAG {dag_id}: {e}")
+    dr = dag.test()
+    assert dr.state == "success"

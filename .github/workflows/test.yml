@@ -1,7 +1,7 @@
 name: test
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "issue-81-enable-integration-tests" ]
   pull_request_target:
     branches: ["main"]
 
@@ -68,7 +68,7 @@ jobs:
           path: .coverage
           include-hidden-files: true
 
-  Run-Integration-Tests:
+  Run-GKE-Integration-Tests:
     needs: Authorize
     runs-on: ubuntu-latest
     strategy:
@@ -136,7 +136,8 @@ jobs:
         run: |
           hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-integration
         env:
-          RAY_SPEC_FILENAME: "ray-gke.yaml"
+          RAY_SPEC_FILENAME: "ray-linux.yaml"
+          USE_GKE: 1
 
       - name: Upload coverage to Github
         uses: actions/upload-artifact@v4
@@ -144,16 +145,67 @@ jobs:
           name: coverage-integration-test-${{ matrix.python-version }}-${{ matrix.airflow-version }}
           path: .coverage
           include-hidden-files: true
+
       - name: Delete GKE cluster
         if: always()
         run: |
           gcloud container clusters delete ${{ steps.cluster-name.outputs.name }} --zone us-central1-a --quiet
 
+  Run-Kind-Integration-Tests:
+    needs: Authorize
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.11" ]
+        airflow-version: [ "2.10" ]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            .local/share/hatch/
+          key: coverage-integration-kubernetes-test-${{ runner.os }}-${{ matrix.python-version }}-${{ matrix.airflow-version }}-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('cosmos/__init__.py') }}
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Create KinD cluster
+        uses: container-tools/kind-action@v1
+        #with:
+        #  config: dev/kind-config.yaml
+
+      - name: Install packages and dependencies
+        run: |
+          python -m pip install uv
+          uv pip install --system hatch
+          hatch -e tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }} run pip freeze
+
+      - name: Run integration tests in Kind
+        run: |
+          hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-integration
+        env:
+          RAY_SPEC_FILENAME: "ray-linux.yaml"
+          AIRFLOW_HOME: /home/runner/work/astro-provider-ray/astro-provider-ray/
+          KUBECONFIG: /home/runner/.kube/config
+
+      - name: Upload coverage to Github
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration-kubernetes-test-${{ matrix.python-version }}-${{ matrix.airflow-version }}
+          path: .coverage
+          include-hidden-files: true
+
   Code-Coverage:
     if: github.event.action != 'labeled'
     needs:
       - Run-Unit-Tests
-      - Run-Integration-Tests
+      - Run-GKE-Integration-Tests
+      - Run-Kind-Integration-Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

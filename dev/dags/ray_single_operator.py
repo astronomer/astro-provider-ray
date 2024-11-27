@@ -6,7 +6,7 @@ from airflow import DAG
 from ray_provider.operators import SubmitRayJob
 
 CONN_ID = "ray_conn"
-RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
+RAY_SPEC = Path(__file__).parent / "scripts/ray-macos.yaml"
 FOLDER_PATH = Path(__file__).parent / "ray_scripts"
 RAY_RUNTIME_ENV = {"working_dir": str(FOLDER_PATH)}
 
