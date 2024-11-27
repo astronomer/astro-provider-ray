@@ -189,9 +189,6 @@ jobs:
           kubectl get pods -n metallb-system --show-labels
           kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=metallb,component=controller --timeout=120s
           kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=metallb,component=speaker --timeout=120s
-          kubectl logs -n metallb-system -l app=metallb
-          kubectl describe ipaddresspool kind-pool -n metallb-system
-
 
       - name: Configure IPAddressPool
         run: |
