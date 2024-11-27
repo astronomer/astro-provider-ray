@@ -7,7 +7,7 @@ from airflow.decorators import dag, task
 from ray_provider.decorators import ray
 
 CONN_ID = "ray_conn"
-RAY_SPEC_FILENAME = os.getenv("RAY_SPEC_FILENAME", "ray.yaml")
+RAY_SPEC_FILENAME = os.getenv("RAY_SPEC_FILENAME", "ray-macos.yaml")
 RAY_SPEC = Path(__file__).parent / "scripts" / RAY_SPEC_FILENAME
 
 FOLDER_PATH = Path(__file__).parent / "ray_scripts"

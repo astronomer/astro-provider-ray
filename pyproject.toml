@@ -94,7 +94,8 @@ airflow = ["2.7", "2.8", "2.9", "2.10"]
 freeze = "pip freeze"
 test = 'sh scripts/test/unit_test.sh'
 test-cov = 'sh scripts/test/unit_cov.sh'
-test-integration = 'sh scripts/test/integration_test.sh'
+test-integration-gke = 'sh scripts/test/integration_gke_test.sh'
+test-integration-kind = 'sh scripts/test/integration_kind_test.sh'
 static-check = "pre-commit run --all-files"
 
 [tool.pytest.ini_options]
