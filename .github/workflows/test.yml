@@ -179,9 +179,18 @@ jobs:
         #with:
         #  config: dev/kind-config.yaml
 
-      - name: Setup LoadBalancer in KinD
+      - name: Install MetalLB
         run: |
           kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.10/config/manifests/metallb-native.yaml
+
+      - name: Wait for MetalLB to be ready
+        run: |
+          echo "Waiting for MetalLB controller and webhook to be ready..."
+          kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=controller --timeout=120s
+          kubectl wait --namespace metallb-system --for=condition=Ready pod --selector=app=webhook --timeout=120s
+
+      - name: Configure IPAddressPool
+        run: |
           cat <<EOF | kubectl apply -f -
           apiVersion: metallb.io/v1beta1
           kind: IPAddressPool
