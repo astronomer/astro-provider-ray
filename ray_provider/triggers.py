@@ -45,7 +45,7 @@ class RayJobTrigger(BaseTrigger):
         self.gpu_device_plugin_yaml = gpu_device_plugin_yaml
         self.fetch_logs = fetch_logs
         self.poll_interval = poll_interval
-        self._job_status = None | JobStatus
+        self._job_status: None | JobStatus = None
 
     def serialize(self) -> tuple[str, dict[str, Any]]:
         """
