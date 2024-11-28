@@ -1,9 +1,9 @@
+from __future__ import annotations
 import logging
 from unittest.mock import AsyncMock, call, patch
 
 import pytest
 from airflow.triggers.base import TriggerEvent
-from __future__ import annotations
 from kubernetes.client.exceptions import ApiException
 from ray.job_submission import JobStatus
 
