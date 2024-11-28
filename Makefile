@@ -11,6 +11,8 @@ setup-dev: ## Setup development environment
 
 .PHONY: build-whl
 build-whl: setup-dev ## Build installable whl file
+	# Delete any previous wheels, so different versions don't conflict
+	rm dev/include/*
 	cd dev
 	python3 -m build --outdir dev/include/
 
