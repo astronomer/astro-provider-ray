@@ -14,6 +14,9 @@ build-whl: setup-dev ## Build installable whl file
 	# Delete any previous wheels, so different versions don't conflict
 	rm dev/include/*
 	cd dev
+        # delete potential previous versions, otherwise there will be a conflict
+        # during installation
+        rm include/*
 	python3 -m build --outdir dev/include/
 
 .PHONY: docker-run
