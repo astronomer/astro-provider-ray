@@ -64,7 +64,7 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.RayJobTrigger.hook.get_ray_job_status", side_effect=[None, JobStatus.STOPPED])
+    @patch("ray_provider.triggers.RayJobTrigger.hook.get_ray_job_status", side_effect=[JobStatus.RUNNING, JobStatus.STOPPED])
     @patch("ray_provider.triggers.RayJobTrigger.hook")
     async def test_run_job_stopped(self, mock_hook, mock_job_status, trigger):
         generator = trigger.run()
@@ -79,7 +79,7 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.RayJobTrigger.hook.get_ray_job_status", side_effect=[None, JobStatus.FAILED])
+    @patch("ray_provider.triggers.RayJobTrigger.hook.get_ray_job_status", side_effect=[JobStatus.RUNNING, JobStatus.FAILED])
     @patch("ray_provider.triggers.RayJobTrigger.hook")
     async def test_run_job_failed(self, mock_hook, mock_job_status, trigger):
         generator = trigger.run()
@@ -94,7 +94,7 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.RayJobTrigger.hook.get_ray_job_status", side_effect=[None, JobStatus.SUCCEEDED])
+    @patch("ray_provider.triggers.RayJobTrigger.hook.get_ray_job_status", side_effect=[JobStatus.RUNNING, JobStatus.SUCCEEDED])
     @patch("ray_provider.triggers.RayJobTrigger.hook")
     @patch("ray_provider.triggers.RayJobTrigger._stream_logs")
     async def test_run_with_log_streaming(self, mock_stream_logs, mock_hook, mock_job_status, trigger):
@@ -179,7 +179,7 @@ class TestRayJobTrigger:
 
     @pytest.mark.asyncio
     @patch("asyncio.sleep", new_callable=AsyncMock)
-    @patch("ray_provider.triggers.RayJobTrigger.hook.get_ray_job_status", side_effect=[None, None, JobStatus.SUCCEEDED])
+    @patch("ray_provider.triggers.RayJobTrigger.hook.get_ray_job_status", side_effect=[JobStatus.RUNNING, JobStatus.RUNNING, JobStatus.SUCCEEDED])
     @patch("ray_provider.triggers.RayJobTrigger.hook")
     async def test_poll_status(self, mock_hook, mock_job_status, mock_sleep, trigger):
         await trigger._poll_status()
