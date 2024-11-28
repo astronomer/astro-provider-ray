@@ -42,7 +42,7 @@ class TestRayJobTrigger:
         )
 
     @pytest.mark.asyncio
-    @patch("ray_provider.triggers.RayJobTrigger.hook.get_ray_job_status", side_effect=[None, JobStatus.SUCCEEDED])
+    @patch("ray_provider.triggers.RayJobTrigger.hook.get_ray_job_status", side_effect=[JobStatus.RUNNING, JobStatus.SUCCEEDED])
     @patch("ray_provider.triggers.RayJobTrigger.hook")
     async def test_run_job_succeeded(self, mock_hook, mock_job_status):
         trigger = RayJobTrigger(
