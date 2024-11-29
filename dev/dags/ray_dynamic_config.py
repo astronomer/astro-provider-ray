@@ -9,21 +9,20 @@ Each downstream DAG retrieves the context data (run_context) from dag_run.conf, 
 
 The print_context tasks in the downstream DAGs output the received context to the logs.
 """
-from pathlib import Path
-import re
 
+import re
+from pathlib import Path
+
+import yaml
 from airflow import DAG
-from airflow.decorators import dag, task
+from airflow.decorators import task
 from airflow.operators.empty import EmptyOperator
 from airflow.operators.python import PythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-from airflow.utils.context import Context
 from airflow.utils.dates import days_ago
 from jinja2 import Template
-import yaml
 
 from ray_provider.decorators import ray
-
 
 CONN_ID = "ray_conn"
 RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
@@ -44,7 +43,7 @@ def slugify(value):
     """
     Replace invalid characters with hyphens and make lowercase.
     """
-    return re.sub(r'[^\w\-\.]', '-', value).lower()
+    return re.sub(r"[^\w\-\.]", "-", value).lower()
 
 
 def create_config_from_context(context, **kwargs):
@@ -54,11 +53,13 @@ def create_config_from_context(context, **kwargs):
     raycluster_name = Template(raycluster_name_template).render(context).replace("_", "-")
     raycluster_name = slugify(raycluster_name)
 
-    raycluster_k8s_yml_filename_template = context.get("dag_run").conf.get("raycluster_k8s_yml_filename", default_name + ".yml")
+    raycluster_k8s_yml_filename_template = context.get("dag_run").conf.get(
+        "raycluster_k8s_yml_filename", default_name + ".yml"
+    )
     raycluster_k8s_yml_filename = Template(raycluster_k8s_yml_filename_template).render(context).replace("_", "-")
     raycluster_k8s_yml_filename = slugify(raycluster_k8s_yml_filename)
 
-    with open(RAY_SPEC, "r") as file:
+    with open(RAY_SPEC) as file:
         data = yaml.safe_load(file)
         data["metadata"]["name"] = raycluster_name
 
@@ -75,7 +76,9 @@ def print_context(**kwargs):
     # Retrieve `conf` passed from the parent DAG
     print(kwargs)
     cluster_name = kwargs.get("dag_run").conf.get("raycluster_name", "No ray cluster name provided")
-    raycluster_k8s_yml_filename = kwargs.get("dag_run").conf.get("raycluster_k8s_yml_filename", "No ray cluster YML filename provided")
+    raycluster_k8s_yml_filename = kwargs.get("dag_run").conf.get(
+        "raycluster_k8s_yml_filename", "No ray cluster YML filename provided"
+    )
     print(f"Received cluster name: {cluster_name}")
     print(f"Received cluster K8s YML filename: {raycluster_k8s_yml_filename}")
 
@@ -153,7 +156,6 @@ with DAG(
         print(f"Mean of this population is {mean}")
         return mean
 
-
     data = generate_data()
     process_data_with_ray(data)
 
@@ -172,7 +174,7 @@ with DAG(
         trigger_dag_id="ray_dynamic_config_child_1",
         conf={
             "raycluster_name": "first-{{ dag_run.id }}",
-            "raycluster_k8s_yml_filename": "first-{{ dag_run.id }}.yaml"
+            "raycluster_k8s_yml_filename": "first-{{ dag_run.id }}.yaml",
         },
     )
 
@@ -184,12 +186,12 @@ with DAG(
 
     # Illustrates that by default two DAG runs of the same DAG will be using different Ray clusters
     # Disabled because in the local dev MacOS we're only managing to spin up two Ray Cluster services concurrently
-    #trigger_dag_3 = TriggerDagRunOperator(
+    # trigger_dag_3 = TriggerDagRunOperator(
     #    task_id="trigger_downstream_dag_3",
     #    trigger_dag_id="ray_dynamic_config_child_2",
     #    conf={},
-    #)
+    # )
 
     empty_task >> trigger_dag_1
     trigger_dag_1 >> trigger_dag_2
-    #trigger_dag_1 >> trigger_dag_3
+    # trigger_dag_1 >> trigger_dag_3
