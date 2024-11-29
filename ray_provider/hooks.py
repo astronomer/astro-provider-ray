@@ -113,14 +113,14 @@ class RayHook(KubernetesHook):  # type: ignore
 
     # Create a PR for this
     @cached_property
-    def namespace(self):
+    def namespace(self) -> str:
         if self.ray_cluster_yaml is None:
             return self.default_namespace
         cluster_spec = self.load_yaml_content(self.ray_cluster_yaml)
         return cluster_spec["metadata"].get("namespace") or self.default_namespace
 
     # Create another PR for this
-    def test_connection(self):
+    def test_connection(self) -> (bool, str):
         job_client = self.ray_client(self.address)
 
         job_id = job_client.submit_job(entrypoint="import ray; ray.init(); print(ray.cluster_resources())")
@@ -420,7 +420,7 @@ class RayHook(KubernetesHook):  # type: ignore
         name: str,
         namespace: str,
         cluster_spec: dict[str, Any],
-    ) -> None:
+    ) -> str:
         """
         Create or update the Ray cluster based on the cluster specification.
 
