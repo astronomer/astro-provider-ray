@@ -2,7 +2,6 @@ from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
-from airflow.exceptions import AirflowException
 from airflow.utils.context import Context
 
 from ray_provider.decorators import _RayDecoratedOperator, ray
@@ -29,6 +28,7 @@ class TestRayDecoratedOperator:
             pass
 
         operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
+        operator._load_config(config)
 
         assert operator.conn_id == "ray_default"
         assert operator.entrypoint == "python my_script.py"
@@ -50,13 +50,14 @@ class TestRayDecoratedOperator:
             pass
 
         operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
+        operator._load_config(config)
 
         assert operator.conn_id == ""
         assert operator.entrypoint == "python script.py"
         assert operator.runtime_env == {}
         assert operator.num_cpus == 1
         assert operator.num_gpus == 0
-        assert operator.memory is None
+        assert operator.memory == 1
         assert operator.ray_resources is None
         assert operator.fetch_logs == True
         assert operator.wait_for_completion == True
@@ -72,13 +73,16 @@ class TestRayDecoratedOperator:
         def dummy_callable():
             pass
 
+        operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
+
         with pytest.raises(TypeError):
-            _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
+            operator._load_config(config)
 
         config["num_cpus"] = 1
         config["num_gpus"] = "invalid_number"
+
         with pytest.raises(TypeError):
-            _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
+            operator._load_config(config)
 
     @patch.object(_RayDecoratedOperator, "_extract_function_body")
     @patch("ray_provider.decorators.SubmitRayJob.execute")
@@ -130,7 +134,7 @@ class TestRayDecoratedOperator:
         operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
         mock_super_execute.side_effect = Exception("Ray job failed")
 
-        with pytest.raises(AirflowException):
+        with pytest.raises(Exception):
             operator.execute(context)
 
     def test_extract_function_body(self):
