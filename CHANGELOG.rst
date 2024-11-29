@@ -2,9 +2,11 @@ CHANGELOG
 =========
 
 0.3.0 (2024-11-29)
-------------------
+---------------------
 
 **Breaking changes**
+
+* Simplify the project structure and debugging by @tatiana in #93
 
 In order to improve the development and troubleshooting DAGs created with this provider, we introduced breaking changes
 to the folder structure. It was flattened and the import paths to existing decorators, hooks, operators and trigger
@@ -21,6 +23,46 @@ changed, as documented in the table below:
 | Trigger   | ray_provider.triggers.ray.RayJobTrigger     | ray_provider.triggers.RayJobTrigger     |
 +-----------+---------------------------------------------+-----------------------------------------+
 
+* Removal of ``SubmitRayJob.terminal_states``. The same values are now available at ``ray_provider.constants.TERMINAL_JOB_STATUSES``.
+
+
+**Features**
+
+* Support using callable ``config`` in ``@ray.task`` by @tatiana in #103
+* Support running Ray jobs indefinitely without timing out by @venkatajagannath and @tatiana in #74
+
+**Bug fixes**
+
+* Fix integration test and bug in load balancer wait logic by @pankajastro in #85
+* Bugfix: Better exception handling and cluster clean up by @venkatajagannath in #68
+* Stop catching generic ``Exception`` in operators by @tatiana in #100
+* Stop catching generic ``Exception`` in trigger by @tatiana in #99
+
+**Docs**
+
+* Add docs to deploy project on Astro Cloud by @pankajastro in #90
+* Fix dead reference in docs index page by @pankajastro in #87
+* Cloud Auth documentation update by @venkatajagannath in #58
+* Improve main docs page by @TJaniF in #71
+
+**Others**
+
+Local development
+
+* Fix the local development environment and update documentation by @tatiana in #92
+* Enable secret detection precommit check by @pankajastro in #91
+* Add astro cli project + kind Raycluster setup instruction by @pankajastro in #83
+* Remove pytest durations from tests by @tatiana in #102
+* Fix running make docker-run when there is a new version by @tatiana in #99 and #101
+* Improve Astro CLI DAGs test so running hatch test-cov locally doesn't fail by @tatiana in #97
+
+CI
+
+* CI improvement by @venkatajagannath in #73
+* CI fix related to broken coverage upload artifact by @pankajkoti in #60
+* Allow tests to run for PRs from forked repos by @venkatajagannath in #72
+* Update CODEOWNERS by @tatiana in #84
+* Add Airflow 2.10 (released in August 2024) to tests by @tatiana in #96
 
 
 0.2.1 (2024-09-04)
