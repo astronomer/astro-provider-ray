@@ -6,7 +6,7 @@ CHANGELOG
 
 **Breaking changes**
 
-* Simplify the project structure and debugging by @tatiana in #93
+* Simplify the project structure and debugging by @tatiana in `#93 <https://github.com/astronomer/astro-provider-ray/pull/93>`_.
 
 In order to improve the development and troubleshooting DAGs created with this provider, we introduced breaking changes
 to the folder structure. It was flattened and the import paths to existing decorators, hooks, operators and trigger
@@ -23,46 +23,45 @@ changed, as documented in the table below:
 | Trigger   | ray_provider.triggers.ray.RayJobTrigger     | ray_provider.triggers.RayJobTrigger     |
 +-----------+---------------------------------------------+-----------------------------------------+
 
-* Removal of ``SubmitRayJob.terminal_states``. The same values are now available at ``ray_provider.constants.TERMINAL_JOB_STATUSES``.
-
+* Removal of ``SubmitRayJob.terminal_states``. The same values are now available at ``ray_provider.constants.TERMINAL_JOB_STATUSES``. This change introduced in `#100 <https://github.com/astronomer/astro-provider-ray/pull/100>`_.
 
 **Features**
 
-* Support using callable ``config`` in ``@ray.task`` by @tatiana in #103
-* Support running Ray jobs indefinitely without timing out by @venkatajagannath and @tatiana in #74
+* Support using callable ``config`` in ``@ray.task`` by @tatiana in `#103 <https://github.com/astronomer/astro-provider-ray/pull/103>`_.
+* Support running Ray jobs indefinitely without timing out by @venkatajagannath and @tatiana in `#74 <https://github.com/astronomer/astro-provider-ray/pull/74>`_.
 
 **Bug fixes**
 
-* Fix integration test and bug in load balancer wait logic by @pankajastro in #85
-* Bugfix: Better exception handling and cluster clean up by @venkatajagannath in #68
-* Stop catching generic ``Exception`` in operators by @tatiana in #100
-* Stop catching generic ``Exception`` in trigger by @tatiana in #99
+* Fix integration test and bug in load balancer wait logic by @pankajastro in `#85 <https://github.com/astronomer/astro-provider-ray/pull/85>`_
+* Bugfix: Better exception handling and cluster clean up by @venkatajagannath in `#68 <https://github.com/astronomer/astro-provider-ray/pull/68>`_
+* Stop catching generic ``Exception`` in operators by @tatiana in `#100 <https://github.com/astronomer/astro-provider-ray/pull/100>`_
+* Stop catching generic ``Exception`` in trigger by @tatiana in `#99 <https://github.com/astronomer/astro-provider-ray/pull/99>`_
 
 **Docs**
 
-* Add docs to deploy project on Astro Cloud by @pankajastro in #90
-* Fix dead reference in docs index page by @pankajastro in #87
-* Cloud Auth documentation update by @venkatajagannath in #58
-* Improve main docs page by @TJaniF in #71
+* Add docs to deploy project on Astro Cloud by @pankajastro in `#90 <https://github.com/astronomer/astro-provider-ray/pull/90>`_
+* Fix dead reference in docs index page by @pankajastro in `#87 <https://github.com/astronomer/astro-provider-ray/pull/87>`_
+* Cloud Auth documentation update by @venkatajagannath in `#58 <https://github.com/astronomer/astro-provider-ray/pull/58>`_
+* Improve main docs page by @TJaniF in `#71 <https://github.com/astronomer/astro-provider-ray/pull/71>`_
 
 **Others**
 
 Local development
 
-* Fix the local development environment and update documentation by @tatiana in #92
-* Enable secret detection precommit check by @pankajastro in #91
-* Add astro cli project + kind Raycluster setup instruction by @pankajastro in #83
-* Remove pytest durations from tests by @tatiana in #102
-* Fix running make docker-run when there is a new version by @tatiana in #99 and #101
-* Improve Astro CLI DAGs test so running hatch test-cov locally doesn't fail by @tatiana in #97
+* Fix the local development environment and update documentation by @tatiana in `#92 <https://github.com/astronomer/astro-provider-ray/pull/92>`_
+* Enable secret detection precommit check by @pankajastro in `#91 <https://github.com/astronomer/astro-provider-ray/pull/91>`_
+* Add astro cli project + kind Raycluster setup instruction by @pankajastro in `#83 <https://github.com/astronomer/astro-provider-ray/pull/83>`_
+* Remove pytest durations from tests by @tatiana in `#102 <https://github.com/astronomer/astro-provider-ray/pull/102>`_
+* Fix running make docker-run when there is a new version by @tatiana in #99 and `#101 <https://github.com/astronomer/astro-provider-ray/pull/101>`_
+* Improve Astro CLI DAGs test so running hatch test-cov locally doesn't fail by @tatiana in `#97 <https://github.com/astronomer/astro-provider-ray/pull/97>`_
 
 CI
 
-* CI improvement by @venkatajagannath in #73
-* CI fix related to broken coverage upload artifact by @pankajkoti in #60
-* Allow tests to run for PRs from forked repos by @venkatajagannath in #72
-* Update CODEOWNERS by @tatiana in #84
-* Add Airflow 2.10 (released in August 2024) to tests by @tatiana in #96
+* CI improvement by @venkatajagannath in `#73 <https://github.com/astronomer/astro-provider-ray/pull/73>`_
+* CI fix related to broken coverage upload artifact by @pankajkoti in `#60 <https://github.com/astronomer/astro-provider-ray/pull/60>`_
+* Allow tests to run for PRs from forked repos by @venkatajagannath in `#72 <https://github.com/astronomer/astro-provider-ray/pull/72>`_
+* Update CODEOWNERS by @tatiana in `#84 <https://github.com/astronomer/astro-provider-ray/pull/84>`_
+* Add Airflow 2.10 (released in August 2024) to tests by @tatiana in `#96 <https://github.com/astronomer/astro-provider-ray/pull/96>`_
 
 
 0.2.1 (2024-09-04)
