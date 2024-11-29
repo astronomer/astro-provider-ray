@@ -5,6 +5,7 @@ import pytest
 from airflow.utils.context import Context
 
 from ray_provider.decorators import _RayDecoratedOperator, ray
+from ray_provider.exceptions import RayAirflowException
 
 
 class TestRayDecoratedOperator:
@@ -65,6 +66,18 @@ class TestRayDecoratedOperator:
         assert operator.poll_interval == 60
         assert operator.xcom_task_key is None
 
+    def test_callable_config(self):
+        def dummy_callable():
+            pass
+
+        callable_config = lambda context: {"ray_cluster_yaml": "different.yml"}
+
+        operator = _RayDecoratedOperator(task_id="test_task", config=callable_config, python_callable=dummy_callable)
+        new_config = operator._build_config(context={})
+        operator._load_config(new_config)
+
+        assert operator.ray_cluster_yaml == "different.yml"
+
     def test_invalid_config_raises_exception(self):
         config = {
             "num_cpus": "invalid_number",
@@ -75,13 +88,13 @@ class TestRayDecoratedOperator:
 
         operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
 
-        with pytest.raises(TypeError):
+        with pytest.raises(RayAirflowException):
             operator._load_config(config)
 
         config["num_cpus"] = 1
         config["num_gpus"] = "invalid_number"
 
-        with pytest.raises(TypeError):
+        with pytest.raises(RayAirflowException):
             operator._load_config(config)
 
     @patch.object(_RayDecoratedOperator, "_extract_function_body")
@@ -158,6 +171,37 @@ class TestRayDecoratedOperator:
     return "dummy"
 """
         )
+
+    def test_extract_function_body_invalid_body(self):
+        config = {}
+
+        @ray.task()
+        def dummy_callable():
+            return "dummy"
+
+        operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
+
+        with pytest.raises(RayAirflowException) as exc_info:
+            operator._extract_function_body(
+                """@ray_decorator.task()
+            def dummy_callable():
+                return "dummy"
+            """
+            )
+        assert str(exc_info.value) == "Unable to parse this body. Expects the `@ray.task` decorator."
+
+    def test_extract_function_body_empty_body(self):
+        config = {}
+
+        @ray.task()
+        def dummy_callable():
+            return "dummy"
+
+        operator = _RayDecoratedOperator(task_id="test_task", config=config, python_callable=dummy_callable)
+
+        with pytest.raises(RayAirflowException) as exc_info:
+            operator._extract_function_body("""@ray.task()""")
+        assert str(exc_info.value) == "Failed to extract Ray pipeline code decorated with @ray.task"
 
 
 class TestRayTaskDecorator:

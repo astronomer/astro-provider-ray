@@ -12,6 +12,7 @@ from typing import Any, Callable
 from airflow.decorators.base import DecoratedOperator, TaskDecorator, task_decorator_factory
 from airflow.utils.context import Context
 
+from ray_provider.exceptions import RayAirflowException
 from ray_provider.operators import SubmitRayJob
 
 
@@ -77,9 +78,9 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         self.config = config
 
         if not isinstance(self.num_cpus, (int, float)):
-            raise TypeError("num_cpus should be an integer or float value")
+            raise RayAirflowException("num_cpus should be an integer or float value")
         if not isinstance(self.num_gpus, (int, float)):
-            raise TypeError("num_gpus should be an integer or float value")
+            raise RayAirflowException("num_gpus should be an integer or float value")
 
     def execute(self, context: Context) -> Any:
         """
@@ -104,8 +105,6 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
                 # Get the Python source code and extract just the function body
                 full_source = inspect.getsource(self.python_callable)
                 function_body = self._extract_function_body(full_source)
-                if not function_body:
-                    raise ValueError("Failed to retrieve Python source code")
 
                 # Prepare the function call
                 args_str = ", ".join(repr(arg) for arg in self.op_args)
@@ -129,6 +128,9 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
     def _extract_function_body(self, source: str) -> str:
         """Extract the function, excluding only the ray.task decorator."""
+        self.log.info(r"Ray pipeline intended to be executed: \n %s", source)
+        if "@ray.task" not in source:
+            raise RayAirflowException("Unable to parse this body. Expects the `@ray.task` decorator.")
         lines = source.split("\n")
         # TODO: Review the current approach, that is quite hacky.
         # It feels a mistake to have a user-facing module named the same as the official ray SDK.
@@ -141,8 +143,9 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
 
         # Include everything except the ray.task decorator line
         body = "\n".join(lines[:ray_task_line] + lines[ray_task_line + 1 :])
-        self.log.info(r"Ray job that is going to be executed: \m %s", body)
 
+        if not body:
+            raise RayAirflowException("Failed to extract Ray pipeline code decorated with @ray.task")
         # Dedent the body
         return textwrap.dedent(body)
 
