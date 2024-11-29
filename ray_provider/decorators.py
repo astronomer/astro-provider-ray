@@ -33,7 +33,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
     template_fields: Any = (*SubmitRayJob.template_fields, "op_args", "op_kwargs")
 
     def __init__(self, config: dict[str, Any] | Callable[..., dict[str, Any]], **kwargs: Any) -> None:
-        self._config = config or {}
+        self._config = config
         self.kwargs = kwargs
         super().__init__(conn_id="", entrypoint="python script.py", runtime_env={}, **kwargs)
 
