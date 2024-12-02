@@ -416,7 +416,7 @@ class RayHook(KubernetesHook):  # type: ignore
 
     def _setup_gpu_driver(self, gpu_device_plugin_yaml: str) -> None:
         """
-        Set up the GPU device plugin if GPU is enabled. Defaults to NVIDIA's plugin
+        Set up the GPU device plugin if GPU is enabled.
 
         :param gpu_device_plugin_yaml: Path or URL to the GPU device plugin YAML.
         """
@@ -425,7 +425,7 @@ class RayHook(KubernetesHook):  # type: ignore
             gpu_driver_name = gpu_driver["metadata"]["name"]
 
             if not self.get_daemon_set(gpu_driver_name):
-                self.log.info("Creating DaemonSet for NVIDIA device plugin...")
+                self.log.info("Creating DaemonSet for GPU driver...")
                 self.create_daemon_set(gpu_driver_name, gpu_driver)
 
     def _setup_load_balancer(self, name: str, namespace: str, context: Context) -> None:
@@ -461,7 +461,7 @@ class RayHook(KubernetesHook):  # type: ignore
         :param context: The Airflow task context.
         :param ray_cluster_yaml: Path to the YAML file defining the Ray cluster.
         :param kuberay_version: Version of KubeRay to install.
-        :param gpu_device_plugin_yaml: Path or URL to the GPU device plugin YAML. Defaults to NVIDIA's plugin
+        :param gpu_device_plugin_yaml: Path or URL to the GPU device plugin YAML.
         :param update_if_exists: Whether to update the cluster if it already exists.
         :raises AirflowException: If there's an error setting up the Ray cluster.
         """
@@ -536,18 +536,21 @@ class RayHook(KubernetesHook):  # type: ignore
         Execute the operator to delete the Ray cluster.
 
         :param ray_cluster_yaml: Path to the YAML file defining the Ray cluster.
-        :param gpu_device_plugin_yaml: Path or URL to the GPU device plugin YAML. Defaults to NVIDIA's plugin
+        :param gpu_device_plugin_yaml: Path or URL to the GPU device plugin YAML.
         :raises AirflowException: If there's an error deleting the Ray cluster.
         """
         try:
             self._validate_yaml_file(ray_cluster_yaml)
 
-            """Delete the NVIDIA GPU device plugin DaemonSet if it exists."""
-            gpu_driver = self.load_yaml_content(gpu_device_plugin_yaml)
-            gpu_driver_name = gpu_driver["metadata"]["name"]
+            """Delete the GPU device plugin DaemonSet if it exists."""
+            if gpu_device_plugin_yaml:
+                gpu_driver = self.load_yaml_content(gpu_device_plugin_yaml)
+                gpu_driver_name = gpu_driver["metadata"]["name"]
+            else:
+                return
 
             if self.get_daemon_set(gpu_driver_name):
-                self.log.info("Deleting DaemonSet for NVIDIA device plugin...")
+                self.log.info("Deleting DaemonSet for the GPU device plugin...")
                 self.delete_daemon_set(gpu_driver_name)
 
             self.log.info("::group:: Delete Ray Cluster")
