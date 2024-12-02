@@ -35,10 +35,7 @@ class TestSetupRayCluster:
             ray_cluster_yaml="cluster.yaml",
         )
         assert operator.kuberay_version == "1.0.0"
-        assert (
-            operator.gpu_device_plugin_yaml
-            == "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml"
-        )
+        assert not operator.gpu_device_plugin_yaml
         assert operator.update_if_exists is False
 
     @patch("ray_provider.operators.RayHook")
@@ -87,10 +84,7 @@ class TestDeleteRayCluster:
             conn_id="test_conn",
             ray_cluster_yaml="cluster.yaml",
         )
-        assert (
-            operator.gpu_device_plugin_yaml
-            == "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml"
-        )
+        assert not operator.gpu_device_plugin_yaml
 
     @patch("ray_provider.operators.RayHook")
     def test_hook_property(self, mock_ray_hook):
