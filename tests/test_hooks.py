@@ -772,3 +772,36 @@ class TestRayHook:
         with pytest.raises(AirflowException) as exc_info:
             ray_hook.delete_ray_cluster(ray_cluster_yaml="test.yaml", gpu_device_plugin_yaml="gpu.yaml")
         assert "Failed to delete Ray cluster: Cluster deletion failed" in str(exc_info.value)
+
+    @patch("ray_provider.hooks.RayHook.create_daemon_set")
+    @patch("ray_provider.hooks.RayHook.get_daemon_set", return_value=True)
+    def test_setup_ray_cluster_with_config_existing_daemon(self, mock_get_daemon_set, mock_create_daemon_set, ray_hook):
+        gpu_device_plugin_yaml = (
+            "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml"
+        )
+        response = ray_hook._setup_gpu_driver(gpu_device_plugin_yaml)
+        assert response is None
+        mock_get_daemon_set.assert_called_once()
+        mock_create_daemon_set.assert_not_called()
+
+    @patch("ray_provider.hooks.RayHook.create_daemon_set")
+    @patch("ray_provider.hooks.RayHook.get_daemon_set", return_value=False)
+    def test_setup_ray_cluster_with_config_inexistent_daemon(
+        self, mock_get_daemon_set, mock_create_daemon_set, ray_hook
+    ):
+        gpu_device_plugin_yaml = (
+            "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml"
+        )
+        response = ray_hook._setup_gpu_driver(gpu_device_plugin_yaml)
+        assert response is None
+        mock_get_daemon_set.assert_called_once()
+        mock_create_daemon_set.assert_called_once()
+
+    @patch("ray_provider.hooks.RayHook.create_daemon_set")
+    @patch("ray_provider.hooks.RayHook.get_daemon_set")
+    def test_setup_ray_cluster_no_config(self, mock_get_daemon_set, mock_create_daemon_set, ray_hook):
+        gpu_device_plugin_yaml = ""
+        response = ray_hook._setup_gpu_driver(gpu_device_plugin_yaml)
+        assert response is None
+        mock_get_daemon_set.assert_not_called()
+        mock_create_daemon_set.assert_not_called()
