@@ -26,7 +26,7 @@ class RayHook(KubernetesHook):  # type: ignore
     :param conn_id: The connection ID to use when fetching connection info.
     """
 
-    conn_name_attr = "ray_conn_id"
+    conn_name_attr = "conn_id"
     default_conn_name = "ray_default"
     conn_type = "ray"
     hook_name = "Ray"
