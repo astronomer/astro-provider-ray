@@ -420,12 +420,13 @@ class RayHook(KubernetesHook):  # type: ignore
 
         :param gpu_device_plugin_yaml: Path or URL to the GPU device plugin YAML.
         """
-        gpu_driver = self.load_yaml_content(gpu_device_plugin_yaml)
-        gpu_driver_name = gpu_driver["metadata"]["name"]
+        if gpu_device_plugin_yaml:
+            gpu_driver = self.load_yaml_content(gpu_device_plugin_yaml)
+            gpu_driver_name = gpu_driver["metadata"]["name"]
 
-        if not self.get_daemon_set(gpu_driver_name):
-            self.log.info("Creating DaemonSet for NVIDIA device plugin...")
-            self.create_daemon_set(gpu_driver_name, gpu_driver)
+            if not self.get_daemon_set(gpu_driver_name):
+                self.log.info("Creating DaemonSet for NVIDIA device plugin...")
+                self.create_daemon_set(gpu_driver_name, gpu_driver)
 
     def _setup_load_balancer(self, name: str, namespace: str, context: Context) -> None:
         """

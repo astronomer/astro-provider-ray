@@ -23,7 +23,7 @@ class SetupRayCluster(BaseOperator):
     :param conn_id: The connection ID for the Ray cluster.
     :param ray_cluster_yaml: Path to the YAML file defining the Ray cluster.
     :param kuberay_version: Version of KubeRay to install. Defaults to "1.0.0".
-    :param gpu_device_plugin_yaml: URL or path to the GPU device plugin YAML. Defaults to NVIDIA's plugin.
+    :param gpu_device_plugin_yaml: URL or path to the GPU device plugin YAML. Example value: https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml.
     :param update_if_exists: Whether to update the cluster if it already exists. Defaults to False.
     """
 
@@ -32,7 +32,7 @@ class SetupRayCluster(BaseOperator):
         conn_id: str,
         ray_cluster_yaml: str,
         kuberay_version: str = "1.0.0",
-        gpu_device_plugin_yaml: str = "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
+        gpu_device_plugin_yaml: str = "",
         update_if_exists: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -71,14 +71,14 @@ class DeleteRayCluster(BaseOperator):
 
     :param conn_id: The connection ID for the Ray cluster.
     :param ray_cluster_yaml: Path to the YAML file defining the Ray cluster.
-    :param gpu_device_plugin_yaml: URL or path to the GPU device plugin YAML. Defaults to NVIDIA's plugin.
+    :param gpu_device_plugin_yaml: URL or path to the GPU device plugin YAML. Example value: https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml
     """
 
     def __init__(
         self,
         conn_id: str,
         ray_cluster_yaml: str,
-        gpu_device_plugin_yaml: str = "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
+        gpu_device_plugin_yaml: str = "",
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -119,7 +119,7 @@ class SubmitRayJob(BaseOperator):
     :param ray_cluster_yaml: Path to the Ray cluster YAML configuration file. If provided, the operator will set up and tear down the cluster.
     :param kuberay_version: Version of KubeRay to use when setting up the Ray cluster. Defaults to "1.0.0".
     :param update_if_exists: Whether to update the Ray cluster if it already exists. Defaults to True.
-    :param gpu_device_plugin_yaml: URL or path to the GPU device plugin YAML file. Defaults to NVIDIA's plugin.
+    :param gpu_device_plugin_yaml: URL or path to the GPU device plugin YAML file. Example value: https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml
     :param fetch_logs: Whether to fetch logs from the Ray job. Defaults to True.
     :param wait_for_completion: Whether to wait for the job to complete before marking the task as finished. Defaults to True.
     :param job_timeout_seconds: Maximum time to wait for job completion in seconds. Defaults to 600 seconds. Set to 0 if you want the job to run indefinitely without timeouts.
@@ -152,7 +152,7 @@ class SubmitRayJob(BaseOperator):
         ray_cluster_yaml: str | None = None,
         kuberay_version: str = "1.0.0",
         update_if_exists: bool = True,
-        gpu_device_plugin_yaml: str = "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
+        gpu_device_plugin_yaml: str = "",
         fetch_logs: bool = True,
         wait_for_completion: bool = True,
         job_timeout_seconds: int = 600,
