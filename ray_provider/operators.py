@@ -32,7 +32,8 @@ class SetupRayCluster(BaseOperator):
         conn_id: str,
         ray_cluster_yaml: str,
         kuberay_version: str = "1.0.0",
-        gpu_device_plugin_yaml: str = "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
+        #gpu_device_plugin_yaml: str = "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
+        gpu_device_plugin_yaml: str = "",
         update_if_exists: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -55,6 +56,7 @@ class SetupRayCluster(BaseOperator):
         :param context: The context in which the operator is being executed.
         """
         self.log.info(f"Trying to setup the ray cluster defined in {self.ray_cluster_yaml}")
+
         self.hook.setup_ray_cluster(
             context=context,
             ray_cluster_yaml=self.ray_cluster_yaml,
@@ -62,6 +64,7 @@ class SetupRayCluster(BaseOperator):
             gpu_device_plugin_yaml=self.gpu_device_plugin_yaml,
             update_if_exists=self.update_if_exists,
         )
+
         self.log.info("Finished setting up the ray cluster.")
 
 
@@ -282,7 +285,9 @@ class SubmitRayJob(BaseOperator):
         self.log.info("::endgroup::")
 
         self.log.info("::group:: (SubmitJob 3/5) Submit job")
-        self.log.info(f"Ray job with id {self.job_id} submitted")
+
+        self.log.info(f"Ray job submitted with id: {self.job_id}")
+
         self.job_id = self.hook.submit_ray_job(
             dashboard_url=self.dashboard_url,
             entrypoint=self.entrypoint,

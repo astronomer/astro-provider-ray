@@ -28,6 +28,7 @@ Install the following software:
 1. **Create a Kind Cluster**
 
 a) If you plan to access the Kind Kubernetes cluster from Airflow using Astro CLI, use the following configuration file,
+
 also available in ``dev/kind-config.yaml``, to create the Kind cluster:
 
 .. code-block::
@@ -356,3 +357,4 @@ The most basic setup will look something like below:
 - Disable SSL: Tick the disable SSL boolean if needed
 
 .. image::  ../_static/basic_local_kubernetes_conn.png
+
