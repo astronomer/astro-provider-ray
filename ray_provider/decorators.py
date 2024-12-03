@@ -62,10 +62,7 @@ class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
         self.ray_cluster_yaml: str | None = config.get("ray_cluster_yaml")
         self.update_if_exists: bool = config.get("update_if_exists", False)
         self.kuberay_version: str = config.get("kuberay_version", "1.0.0")
-        self.gpu_device_plugin_yaml: str = config.get(
-            "gpu_device_plugin_yaml",
-            "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml",
-        )
+        self.gpu_device_plugin_yaml: str = config.get("gpu_device_plugin_yaml", "")
         self.fetch_logs: bool = config.get("fetch_logs", True)
         self.wait_for_completion: bool = config.get("wait_for_completion", True)
         job_timeout_seconds = config.get("job_timeout_seconds", 600)
