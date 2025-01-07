@@ -70,3 +70,6 @@ A detailed overview on how to contribute can be found in the [Contributing Guide
 
 ## License
 [Apache 2.0 License](https://github.com/astronomer/astro-provider-ray/blob/main/LICENSE)
+
+## Privacy Notice
+This project follows `Astronomer's Privacy Policy <https://www.astronomer.io/privacy/>`_
