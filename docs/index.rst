@@ -151,4 +151,4 @@ This project follows `Astronomer's Privacy Policy <https://www.astronomer.io/pri
 .. Tracking pixel for Scarf
 .. raw:: html
 
-    <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=56e87110-3304-40f8-b507-152628d91ec0" /> 
+    <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=56e87110-3304-40f8-b507-152628d91ec0" />
