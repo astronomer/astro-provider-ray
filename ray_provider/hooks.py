@@ -5,6 +5,7 @@ import socket
 import subprocess
 import tempfile
 import time
+import json
 from typing import Any, AsyncIterator
 
 import requests
@@ -88,7 +89,7 @@ class RayHook(KubernetesHook):  # type: ignore
         self.create_cluster_if_needed = False
         self.cookies = self._get_field("cookies")
         self.metadata = self._get_field("metadata")
-        self.headers = self._get_field("headers")
+        self.headers = json.load(self._get_field("headers"))
         self.verify = self._get_field("verify") or False
         self.ray_client_instance = None
 
