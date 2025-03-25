@@ -1,6 +1,26 @@
 CHANGELOG
 =========
 
+0.3.1 (2025-03-25)
+------------------
+
+**Bug fixes**
+
+* Fix headers conversion from connection from string to dictionary by @venkatajagannath in `#124 <https://github.com/astronomer/astro-provider-ray/pull/124>`_.
+* Fix ``RayHook`` ``conn_name_attr`` by @tatiana in `#106 <https://github.com/astronomer/astro-provider-ray/pull/106>`_.
+* Change ``gpu_device_plugin_yaml`` default value by @tatiana in `#107 <https://github.com/astronomer/astro-provider-ray/pull/107>`_.
+
+**Docs**
+
+* Add privacy policy and tracking pixel to docs for website analytics by @cmarteepants in `#110 <https://github.com/astronomer/astro-provider-ray/pull/110>`_.
+
+**Others**
+
+* Upgrade GitHub action artifacts upload-artifact & download-artifact to v4 by @pankajkoti in `#111 <https://github.com/astronomer/astro-provider-ray/pull/111>`_.
+* Add Dependabot configuration by @tatiana in `#112 <https://github.com/astronomer/astro-provider-ray/pull/112>`_.
+* Bump GitHub actions by @dependabot in #114, #115, #116, #117, #118, #121
+
+
 0.3.0 (2024-11-29)
 ---------------------
 
