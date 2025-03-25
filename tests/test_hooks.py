@@ -149,7 +149,7 @@ class TestRayHook:
             create_cluster_if_needed=False,
             cookies=None,
             metadata=None,
-            headers=None,
+            headers={},
             verify=False,
         )
         mock_client_instance.get_job_logs.assert_called_once_with(job_id=job_id)
