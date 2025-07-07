@@ -14,7 +14,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  Authorize:
+    environment: ${{ github.event_name == 'pull_request_target' &&
+      github.event.pull_request.head.repo.full_name != github.repository &&
+      'external' || 'internal' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
+
   build-and-deploy:
+    needs: Authorize
     runs-on: ubuntu-20.04
 
     steps:
