@@ -1,7 +1,7 @@
 Trigger
 --------
 
-.. automodule:: ray_provider.triggers.ray
+.. automodule:: ray_provider.triggers
    :members:
    :undoc-members:
    :show-inheritance:

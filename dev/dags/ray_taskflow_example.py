@@ -1,12 +1,15 @@
+import os
 from datetime import datetime
 from pathlib import Path
 
 from airflow.decorators import dag, task
 
-from ray_provider.decorators.ray import ray
+from ray_provider.decorators import ray
 
 CONN_ID = "ray_conn"
-RAY_SPEC = Path(__file__).parent / "scripts/ray.yaml"
+RAY_SPEC_FILENAME = os.getenv("RAY_SPEC_FILENAME", "ray.yaml")
+RAY_SPEC = Path(__file__).parent / "scripts" / RAY_SPEC_FILENAME
+
 FOLDER_PATH = Path(__file__).parent / "ray_scripts"
 RAY_TASK_CONFIG = {
     "conn_id": CONN_ID,

@@ -142,3 +142,13 @@ All contributions, bug reports, bug fixes, documentation improvements, enhanceme
 A detailed overview an how to contribute can be found in the `Contributing Guide`_
 
 .. _Contributing Guide: https://github.com/astronomer/astro-provider-ray/blob/main/docs/CONTRIBUTING.rst
+
+Privacy Notice
+______________
+
+This project follows `Astronomer's Privacy Policy <https://www.astronomer.io/privacy/>`_
+
+.. Tracking pixel for Scarf
+.. raw:: html
+
+    <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=56e87110-3304-40f8-b507-152628d91ec0" />

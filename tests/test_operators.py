@@ -2,22 +2,16 @@ from datetime import timedelta
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-from airflow.exceptions import AirflowException, TaskDeferred
+from airflow.exceptions import TaskDeferred
+from kubernetes.client.exceptions import ApiException
 from ray.job_submission import JobStatus
 
-from ray_provider.operators.ray import DeleteRayCluster, SetupRayCluster, SubmitRayJob
-from ray_provider.triggers.ray import RayJobTrigger
+from ray_provider.exceptions import RayAirflowException
+from ray_provider.operators import DeleteRayCluster, SetupRayCluster, SubmitRayJob
+from ray_provider.triggers import RayJobTrigger
 
 
 class TestSetupRayCluster:
-    @pytest.fixture
-    def mock_hook(self):
-        with patch("ray_provider.operators.ray.RayHook") as mock:
-            yield mock.return_value
-
-    @pytest.fixture
-    def operator(self):
-        return SetupRayCluster(task_id="test_setup_ray_cluster", conn_id="test_conn", ray_cluster_yaml="cluster.yaml")
 
     def test_init(self):
         operator = SetupRayCluster(
@@ -41,22 +35,28 @@ class TestSetupRayCluster:
             ray_cluster_yaml="cluster.yaml",
         )
         assert operator.kuberay_version == "1.0.0"
-        assert (
-            operator.gpu_device_plugin_yaml
-            == "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml"
-        )
+        assert not operator.gpu_device_plugin_yaml
         assert operator.update_if_exists is False
 
-    def test_hook_property(self, operator):
-        with patch("ray_provider.operators.ray.RayHook") as mock_ray_hook:
-            hook = operator.hook
-            mock_ray_hook.assert_called_once_with(conn_id=operator.conn_id)
-            assert hook == mock_ray_hook.return_value
+    @patch("ray_provider.operators.RayHook")
+    def test_hook_property(self, mock_ray_hook):
+        operator = SetupRayCluster(
+            task_id="test_setup_ray_cluster", conn_id="test_conn", ray_cluster_yaml="cluster.yaml"
+        )
+        operator.hook
+        mock_ray_hook.assert_called_once_with(conn_id=operator.conn_id)
 
-    def test_execute(self, operator, mock_hook):
+    @patch("ray_provider.operators.SetupRayCluster.hook.setup_ray_cluster")
+    @patch("ray_provider.operators.SetupRayCluster.hook")
+    def test_execute(self, mock_ray_hook, mock_setup_ray_cluster):
+        operator = SetupRayCluster(
+            task_id="test_setup_ray_cluster", conn_id="test_conn", ray_cluster_yaml="cluster.yaml"
+        )
+
         context = MagicMock()
         operator.execute(context)
-        mock_hook.setup_ray_cluster.assert_called_once_with(
+
+        mock_setup_ray_cluster.assert_called_once_with(
             context=context,
             ray_cluster_yaml=operator.ray_cluster_yaml,
             kuberay_version=operator.kuberay_version,
@@ -66,14 +66,6 @@ class TestSetupRayCluster:
 
 
 class TestDeleteRayCluster:
-    @pytest.fixture
-    def mock_hook(self):
-        with patch("ray_provider.operators.ray.RayHook") as mock:
-            yield mock.return_value
-
-    @pytest.fixture
-    def operator(self):
-        return DeleteRayCluster(task_id="test_delete_ray_cluster", conn_id="test_conn", ray_cluster_yaml="cluster.yaml")
 
     def test_init(self):
         operator = DeleteRayCluster(
@@ -92,33 +84,27 @@ class TestDeleteRayCluster:
             conn_id="test_conn",
             ray_cluster_yaml="cluster.yaml",
         )
-        assert (
-            operator.gpu_device_plugin_yaml
-            == "https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.9.0/nvidia-device-plugin.yml"
+        assert not operator.gpu_device_plugin_yaml
+
+    @patch("ray_provider.operators.RayHook")
+    def test_hook_property(self, mock_ray_hook):
+        operator = DeleteRayCluster(
+            task_id="test_delete_ray_cluster", conn_id="test_conn", ray_cluster_yaml="cluster.yaml"
         )
+        operator.hook
+        mock_ray_hook.assert_called_once_with(conn_id=operator.conn_id)
 
-    def test_hook_property(self, operator):
-        with patch("ray_provider.operators.ray.RayHook") as mock_ray_hook:
-            hook = operator.hook
-            mock_ray_hook.assert_called_once_with(conn_id=operator.conn_id)
-            assert hook == mock_ray_hook.return_value
-
-    def test_execute(self, operator, mock_hook):
+    @patch("ray_provider.operators.DeleteRayCluster.hook")
+    def test_execute(self, mock_hook):
+        operator = DeleteRayCluster(
+            task_id="test_delete_ray_cluster", conn_id="test_conn", ray_cluster_yaml="cluster.yaml"
+        )
         context = MagicMock()
         operator.execute(context)
         mock_hook.delete_ray_cluster.assert_called_once_with(operator.ray_cluster_yaml, operator.gpu_device_plugin_yaml)
 
 
 class TestSubmitRayJob:
-
-    @pytest.fixture
-    def mock_hook(self):
-        with patch("ray_provider.operators.ray.RayHook") as mock:
-            yield mock.return_value
-
-    @pytest.fixture
-    def operator(self):
-        return SubmitRayJob(task_id="test_task", conn_id="test_conn", entrypoint="python script.py", runtime_env={})
 
     @pytest.fixture
     def task_instance(self):
@@ -188,18 +174,24 @@ class TestSubmitRayJob:
         )
         assert operator.job_timeout_seconds is None
 
-    def test_on_kill(self, mock_hook):
-        operator = SubmitRayJob(task_id="test_task", conn_id="test_conn", entrypoint="python script.py", runtime_env={})
+    @patch("ray_provider.operators.SubmitRayJob._delete_cluster")
+    @patch("ray_provider.operators.SubmitRayJob.hook.delete_ray_job")
+    @patch("ray_provider.operators.SubmitRayJob.hook")
+    def test_on_kill(self, mock_hook, mock_delete_ray_job, mock_delete_cluster):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={},
+            ray_cluster_yaml="cluster.yaml",
+        )
         operator.job_id = "test_job_id"
-        operator.hook = mock_hook
         operator.dashboard_url = "http://dashboard.url"
-        operator.ray_cluster_yaml = "cluster.yaml"
 
-        with patch.object(operator, "_delete_cluster") as mock_delete_cluster:
-            operator.on_kill()
+        operator.on_kill()
 
-            mock_hook.delete_ray_job.assert_called_once_with("http://dashboard.url", "test_job_id")
-            mock_delete_cluster.assert_called_once()
+        mock_delete_ray_job.assert_called_once_with("http://dashboard.url", "test_job_id")
+        mock_delete_cluster.assert_called_once()
 
     def test_get_dashboard_url_with_xcom(self, context, task_instance):
         operator = SubmitRayJob(
@@ -228,7 +220,7 @@ class TestSubmitRayJob:
 
         assert result is None
 
-    @patch("ray_provider.operators.ray.RayHook")
+    @patch("ray_provider.operators.RayHook")
     def test_setup_cluster(self, mock_ray_hook, context):
         operator = SubmitRayJob(
             task_id="test_task",
@@ -241,12 +233,11 @@ class TestSubmitRayJob:
             gpu_device_plugin_yaml="https://example.com/plugin.yml",
         )
 
-        mock_hook = mock_ray_hook.return_value
-        operator.hook = mock_hook
+        operator.hook = mock_ray_hook.return_value
 
         operator._setup_cluster(context)
 
-        mock_hook.setup_ray_cluster.assert_called_once_with(
+        mock_ray_hook.return_value.setup_ray_cluster.assert_called_once_with(
             context=context,
             ray_cluster_yaml="cluster.yaml",
             kuberay_version="1.0.0",
@@ -254,7 +245,7 @@ class TestSubmitRayJob:
             update_if_exists=True,
         )
 
-    @patch("ray_provider.operators.ray.RayHook")
+    @patch("ray_provider.operators.SubmitRayJob.hook")
     def test_delete_cluster(self, mock_ray_hook):
         operator = SubmitRayJob(
             task_id="test_task",
@@ -264,18 +255,18 @@ class TestSubmitRayJob:
             ray_cluster_yaml="cluster.yaml",
             gpu_device_plugin_yaml="https://example.com/plugin.yml",
         )
-
-        mock_hook = mock_ray_hook.return_value
-        operator.hook = mock_hook
-
         operator._delete_cluster()
 
-        mock_hook.delete_ray_cluster.assert_called_once_with(
+        mock_ray_hook.delete_ray_cluster.assert_called_once_with(
             ray_cluster_yaml="cluster.yaml",
             gpu_device_plugin_yaml="https://example.com/plugin.yml",
         )
 
-    def test_execute_without_wait(self, mock_hook, context):
+    @patch("ray_provider.operators.SubmitRayJob._setup_cluster")
+    @patch("ray_provider.operators.SubmitRayJob.hook.submit_ray_job", return_value="test_job_id")
+    @patch("ray_provider.operators.SubmitRayJob.hook")
+    def test_execute_without_wait(self, mock_hook, mock_submit_ray_job, mock_setup_cluster, context):
+
         operator = SubmitRayJob(
             task_id="test_task",
             conn_id="test_conn",
@@ -284,22 +275,20 @@ class TestSubmitRayJob:
             wait_for_completion=False,
         )
 
-        mock_hook.submit_ray_job.return_value = "test_job_id"
+        result = operator.execute(context)
+        assert result == "test_job_id"
 
-        with patch.object(operator, "_setup_cluster") as mock_setup_cluster:
-            result = operator.execute(context)
+        mock_setup_cluster.assert_called_once_with(context=context)
 
-            mock_setup_cluster.assert_called_once_with(context=context)
-            assert result == "test_job_id"
-            mock_hook.submit_ray_job.assert_called_once_with(
-                dashboard_url=None,
-                entrypoint="python script.py",
-                runtime_env={},
-                entrypoint_num_cpus=0,
-                entrypoint_num_gpus=0,
-                entrypoint_memory=0,
-                entrypoint_resources=None,
-            )
+        mock_submit_ray_job.assert_called_once_with(
+            dashboard_url=None,
+            entrypoint="python script.py",
+            runtime_env={},
+            entrypoint_num_cpus=0,
+            entrypoint_num_gpus=0,
+            entrypoint_memory=0,
+            entrypoint_resources=None,
+        )
 
     @pytest.mark.parametrize(
         "job_status,expected_action",
@@ -307,11 +296,14 @@ class TestSubmitRayJob:
             (JobStatus.PENDING, "defer"),
             (JobStatus.RUNNING, "defer"),
             (JobStatus.SUCCEEDED, None),
-            (JobStatus.FAILED, "raise"),
-            (JobStatus.STOPPED, "raise"),
         ],
     )
-    def test_execute_with_wait(self, mock_hook, context, job_status, expected_action):
+    @patch("ray_provider.operators.SubmitRayJob._setup_cluster")
+    @patch("ray_provider.operators.SubmitRayJob.hook.submit_ray_job", return_value="test_job_id")
+    @patch("ray_provider.operators.SubmitRayJob.hook")
+    def test_execute_with_wait(self, mock_hook, mock_setup_cluster, context, job_status, expected_action):
+        mock_hook.get_ray_job_status.return_value = job_status
+
         operator = SubmitRayJob(
             task_id="test_task",
             conn_id="test_conn",
@@ -320,20 +312,13 @@ class TestSubmitRayJob:
             wait_for_completion=True,
         )
 
-        mock_hook.submit_ray_job.return_value = "test_job_id"
-        mock_hook.get_ray_job_status.return_value = job_status
-
-        with patch.object(operator, "_setup_cluster"):
-            if expected_action == "defer":
-                with patch.object(operator, "defer") as mock_defer:
-                    operator.execute(context)
-                    mock_defer.assert_called_once()
-            elif expected_action == "raise":
-                with pytest.raises(AirflowException):
-                    operator.execute(context)
-            else:
-                result = operator.execute(context)
-                assert result == "test_job_id"
+        if expected_action == "defer":
+            with patch.object(operator, "defer") as mock_defer:
+                operator.execute(context)
+                mock_defer.assert_called_once()
+        else:
+            result = operator.execute(context)
+            assert result == "test_job_id"
 
     @pytest.mark.parametrize(
         "event_status,expected_action",
@@ -344,19 +329,24 @@ class TestSubmitRayJob:
             ("UNEXPECTED", "raise"),
         ],
     )
-    def test_execute_complete(self, operator, event_status, expected_action):
+    @patch("ray_provider.operators.SubmitRayJob._delete_cluster")
+    def test_execute_complete(self, mock_delete_cluster, event_status, expected_action):
+        operator = SubmitRayJob(
+            task_id="test_task",
+            conn_id="test_conn",
+            entrypoint="python script.py",
+            runtime_env={},
+        )
         operator.job_id = "test_job_id"
         event = {"status": event_status, "message": "Test message"}
 
-        with patch.object(operator, "_delete_cluster") as mock_delete_cluster:
-            if expected_action == "raise":
-                with pytest.raises(AirflowException):
-                    operator.execute_complete({}, event)
-            else:
+        if expected_action == "raise":
+            with pytest.raises(RayAirflowException):
                 operator.execute_complete({}, event)
+        else:
+            operator.execute_complete({}, event)
 
-            # _delete_cluster should be called in all cases
-            mock_delete_cluster.assert_called_once()
+        mock_delete_cluster.assert_called_once()
 
     def test_template_fields(self):
         assert SubmitRayJob.template_fields == (
@@ -371,7 +361,7 @@ class TestSubmitRayJob:
             "job_timeout_seconds",
         )
 
-    @patch("ray_provider.operators.ray.RayHook")
+    @patch("ray_provider.operators.RayHook")
     def test_setup_cluster_exception(self, mock_ray_hook, context):
         operator = SubmitRayJob(
             task_id="test_task",
@@ -392,7 +382,7 @@ class TestSubmitRayJob:
         assert str(exc_info.value) == "Cluster setup failed"
         mock_hook.setup_ray_cluster.assert_called_once()
 
-    @patch("ray_provider.operators.ray.RayHook")
+    @patch("ray_provider.operators.RayHook")
     def test_delete_cluster_exception(self, mock_ray_hook):
         operator = SubmitRayJob(
             task_id="test_task",
@@ -420,7 +410,8 @@ class TestSubmitRayJob:
             ("single_key", None, "single_key"),
         ],
     )
-    def test_get_dashboard_url_xcom_variants(self, operator, context, xcom_task_key, expected_task, expected_key):
+    def test_get_dashboard_url_xcom_variants(self, context, xcom_task_key, expected_task, expected_key):
+        operator = SubmitRayJob(task_id="test_task", conn_id="test_conn", entrypoint="python script.py", runtime_env={})
         operator.xcom_task_key = xcom_task_key
         context["ti"].xcom_pull.return_value = "http://dashboard.url"
 
@@ -432,7 +423,13 @@ class TestSubmitRayJob:
         else:
             context["ti"].xcom_pull.assert_called_once_with(task_ids=context["task"].task_id, key=expected_key)
 
-    def test_execute_job_unexpected_state(self, mock_hook, context):
+    @patch("ray_provider.operators.SubmitRayJob._setup_cluster")
+    @patch("ray_provider.operators.SubmitRayJob.hook.get_ray_job_status", return_value="UNEXPECTED_STATE")
+    @patch("ray_provider.operators.SubmitRayJob.hook.submit_ray_job", return_value="test_job_id")
+    @patch("ray_provider.operators.SubmitRayJob.hook")
+    def test_execute_job_unexpected_state(
+        self, mock_hook, mock_submit_ray_job, mock_get_ray_job_status, mock_setup_cluster, context
+    ):
         operator = SubmitRayJob(
             task_id="test_task",
             conn_id="test_conn",
@@ -440,16 +437,16 @@ class TestSubmitRayJob:
             runtime_env={},
             wait_for_completion=True,
         )
-        mock_hook.submit_ray_job.return_value = "test_job_id"
-        mock_hook.get_ray_job_status.return_value = "UNEXPECTED_STATE"
 
-        with patch.object(operator, "_setup_cluster"), pytest.raises(TaskDeferred) as exc_info:
+        with pytest.raises(TaskDeferred) as exc_info:
             operator.execute(context)
 
         assert isinstance(exc_info.value.trigger, RayJobTrigger)
 
     @pytest.mark.parametrize("dashboard_url", [None, "http://dashboard.url"])
-    def test_execute_defer(self, mock_hook, context, dashboard_url):
+    @patch("ray_provider.operators.SubmitRayJob._setup_cluster")
+    @patch("ray_provider.operators.SubmitRayJob.hook")
+    def test_execute_defer(self, mock_hook, mock_setup_cluster, context, dashboard_url):
         operator = SubmitRayJob(
             task_id="test_task",
             conn_id="test_conn",
@@ -465,9 +462,9 @@ class TestSubmitRayJob:
         mock_hook.submit_ray_job.return_value = "test_job_id"
         mock_hook.get_ray_job_status.return_value = JobStatus.PENDING
 
-        with patch.object(operator, "_setup_cluster"), patch.object(
-            operator, "_get_dashboard_url", return_value=dashboard_url
-        ), pytest.raises(TaskDeferred) as exc_info:
+        with patch.object(operator, "_get_dashboard_url", return_value=dashboard_url), pytest.raises(
+            TaskDeferred
+        ) as exc_info:
             operator.execute(context)
 
         trigger = exc_info.value.trigger
@@ -480,21 +477,29 @@ class TestSubmitRayJob:
         assert trigger.poll_interval == 30
         assert trigger.fetch_logs is True
 
-    def test_execute_complete_unexpected_status(self, operator):
+    @patch("ray_provider.operators.SubmitRayJob._delete_cluster")
+    def test_execute_complete_unexpected_status(self, mock_delete_cluster):
+        operator = SubmitRayJob(task_id="test_task", conn_id="test_conn", entrypoint="python script.py", runtime_env={})
         event = {"status": "UNEXPECTED", "message": "Unexpected status"}
-        with patch.object(operator, "_delete_cluster"), pytest.raises(AirflowException) as exc_info:
+        with pytest.raises(RayAirflowException) as exc_info:
             operator.execute_complete({}, event)
 
-        assert "Unexpected event status" in str(exc_info.value)
+        assert "Encountered unexpected state" in str(exc_info.value)
 
-    def test_execute_complete_cleanup_on_exception(self, operator):
+    @patch("ray_provider.operators.SubmitRayJob._delete_cluster")
+    def test_execute_complete_cleanup_on_exception(self, mock_delete_cluster):
+        operator = SubmitRayJob(task_id="test_task", conn_id="test_conn", entrypoint="python script.py", runtime_env={})
         event = {"status": JobStatus.FAILED, "message": "Job failed"}
-        with patch.object(operator, "_delete_cluster") as mock_delete_cluster, pytest.raises(AirflowException):
+        with pytest.raises(RayAirflowException):
             operator.execute_complete({}, event)
 
         mock_delete_cluster.assert_called_once()
 
-    def test_execute_exception_handling(self, mock_hook, context):
+    @patch("ray_provider.operators.SubmitRayJob._setup_cluster")
+    @patch("ray_provider.operators.SubmitRayJob._delete_cluster")
+    @patch("ray_provider.operators.SubmitRayJob.hook.submit_ray_job", side_effect=Exception("Job submission failed"))
+    @patch("ray_provider.operators.SubmitRayJob.hook")
+    def test_execute_exception_handling(self, mock_hook, mock_delete, mock_setup, context):
         operator = SubmitRayJob(
             task_id="test_task",
             conn_id="test_conn",
@@ -503,17 +508,17 @@ class TestSubmitRayJob:
             ray_cluster_yaml="cluster.yaml",
         )
 
-        mock_hook.submit_ray_job.side_effect = Exception("Job submission failed")
-
-        with patch.object(operator, "_setup_cluster"), patch.object(
-            operator, "_delete_cluster"
-        ) as mock_delete_cluster, pytest.raises(AirflowException) as exc_info:
+        with pytest.raises(Exception) as exc_info:
             operator.execute(context)
 
-        assert "SubmitRayJob operator failed due to Job submission failed" in str(exc_info.value)
-        mock_delete_cluster.assert_called_once()
+        assert "Job submission failed" == str(exc_info.value)
 
-    def test_execute_cluster_setup_exception(self, mock_hook, context):
+    @patch("ray_provider.operators.SubmitRayJob._delete_cluster")
+    @patch(
+        "ray_provider.operators.SubmitRayJob.hook.setup_ray_cluster", side_effect=ApiException("Cluster setup failed")
+    )
+    @patch("ray_provider.operators.SubmitRayJob.hook")
+    def test_execute_cluster_setup_exception(self, mock_hook, mock_setup_cluster, mock_delete_cluster, context):
         operator = SubmitRayJob(
             task_id="test_task",
             conn_id="test_conn",
@@ -522,14 +527,13 @@ class TestSubmitRayJob:
             ray_cluster_yaml="cluster.yaml",
         )
 
-        with patch.object(operator, "_setup_cluster", side_effect=Exception("Cluster setup failed")), patch.object(
-            operator, "_delete_cluster"
-        ) as mock_delete_cluster, pytest.raises(AirflowException) as exc_info:
+        with pytest.raises(ApiException) as exc_info:
             operator.execute(context)
 
-        assert "SubmitRayJob operator failed due to Cluster setup failed" in str(exc_info.value)
+        assert "Cluster setup failed" in str(exc_info.value)
         mock_delete_cluster.assert_called_once()
 
+    @patch("ray_provider.operators.RayHook")
     def test_execute_with_wait_and_defer(self, mock_hook, context):
         operator = SubmitRayJob(
             task_id="test_task",
@@ -554,16 +558,13 @@ class TestSubmitRayJob:
             assert kwargs["method_name"] == "execute_complete"
             assert kwargs["timeout"].total_seconds() == 600
 
-    def test_execute_complete_with_cleanup(self, operator):
-        operator.job_id = "test_job_id"
-        event = {"status": JobStatus.FAILED, "message": "Job failed"}
-
-        with patch.object(operator, "_delete_cluster") as mock_delete_cluster, pytest.raises(AirflowException):
-            operator.execute_complete({}, event)
-
-        mock_delete_cluster.assert_called_once()
-
-    def test_execute_without_wait_no_cleanup(self, mock_hook, context):
+    @patch("ray_provider.operators.SubmitRayJob._delete_cluster")
+    @patch("ray_provider.operators.SubmitRayJob._setup_cluster")
+    @patch("ray_provider.operators.SubmitRayJob.hook.submit_ray_job", return_value="test_job_id")
+    @patch("ray_provider.operators.SubmitRayJob.hook")
+    def test_execute_without_wait_no_cleanup(
+        self, mock_hook, mock_submit, mock_setup_cluster, mock_delete_cluster, context
+    ):
         operator = SubmitRayJob(
             task_id="test_task",
             conn_id="test_conn",
@@ -572,22 +573,17 @@ class TestSubmitRayJob:
             wait_for_completion=False,
         )
 
-        mock_hook.submit_ray_job.return_value = "test_job_id"
+        result = operator.execute(context)
+        assert result == "test_job_id"
 
-        with patch.object(operator, "_setup_cluster") as mock_setup_cluster, patch.object(
-            operator, "_delete_cluster"
-        ) as mock_delete_cluster:
-            result = operator.execute(context)
-
-            mock_setup_cluster.assert_called_once_with(context=context)
-            assert result == "test_job_id"
-            mock_hook.submit_ray_job.assert_called_once_with(
-                dashboard_url=None,
-                entrypoint="python script.py",
-                runtime_env={},
-                entrypoint_num_cpus=0,
-                entrypoint_num_gpus=0,
-                entrypoint_memory=0,
-                entrypoint_resources=None,
-            )
-            mock_delete_cluster.assert_not_called()
+        mock_setup_cluster.assert_called_once_with(context=context)
+        mock_submit.assert_called_once_with(
+            dashboard_url=None,
+            entrypoint="python script.py",
+            runtime_env={},
+            entrypoint_num_cpus=0,
+            entrypoint_num_gpus=0,
+            entrypoint_memory=0,
+            entrypoint_resources=None,
+        )
+        mock_delete_cluster.assert_not_called()

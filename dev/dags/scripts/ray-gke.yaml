@@ -1,7 +1,7 @@
 apiVersion: ray.io/v1
 kind: RayCluster
 metadata:
-  name: airflow-raycluster
+  name: raycluster-complete
 spec:
   rayVersion: "2.10.0"
   enableInTreeAutoscaling: true
@@ -15,11 +15,9 @@ spec:
         labels:
           ray-node-type: head
       spec:
-        imagePullSecrets:
-          - name: my-registry-secret
         containers:
         - name: ray-head
-          image: rayproject/ray:2.20.0-aarch64
+          image: rayproject/ray-ml:latest
           resources:
             limits:
               cpu: 1
@@ -52,11 +50,9 @@ spec:
     template:
       metadata:
       spec:
-        imagePullSecrets:
-          - name: my-registry-secret
         containers:
         - name: machine-learning
-          image: rayproject/ray:2.20.0-aarch64
+          image: rayproject/ray-ml:latest
           resources:
             limits:
               cpu: 1

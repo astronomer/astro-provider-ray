@@ -1,7 +1,7 @@
 Operators
 ---------
 
-.. automodule:: ray_provider.operators.ray
+.. automodule:: ray_provider.operators
    :members:
    :undoc-members:
    :show-inheritance:

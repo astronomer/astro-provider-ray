@@ -5,9 +5,11 @@ from functools import cached_property
 from typing import Any, AsyncIterator
 
 from airflow.triggers.base import BaseTrigger, TriggerEvent
+from kubernetes.client.exceptions import ApiException
 from ray.job_submission import JobStatus
 
-from ray_provider.hooks.ray import RayHook
+from ray_provider.constants import TERMINAL_JOB_STATUSES
+from ray_provider.hooks import RayHook
 
 
 class RayJobTrigger(BaseTrigger):
@@ -43,6 +45,7 @@ class RayJobTrigger(BaseTrigger):
         self.gpu_device_plugin_yaml = gpu_device_plugin_yaml
         self.fetch_logs = fetch_logs
         self.poll_interval = poll_interval
+        self._job_status: None | JobStatus = None
 
     def serialize(self) -> tuple[str, dict[str, Any]]:
         """
@@ -51,7 +54,7 @@ class RayJobTrigger(BaseTrigger):
         :return: A tuple containing the fully qualified class name and a dictionary of its parameters.
         """
         return (
-            "ray_provider.triggers.ray.RayJobTrigger",
+            "ray_provider.triggers.RayJobTrigger",
             {
                 "job_id": self.job_id,
                 "conn_id": self.conn_id,
@@ -81,22 +84,22 @@ class RayJobTrigger(BaseTrigger):
         resources are not deleted.
 
         """
-        try:
-            if self.ray_cluster_yaml:
-                self.log.info(f"Attempting to delete Ray cluster using YAML: {self.ray_cluster_yaml}")
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(
-                    None, self.hook.delete_ray_cluster, self.ray_cluster_yaml, self.gpu_device_plugin_yaml
-                )
-                self.log.info("Ray cluster deletion process completed")
-            else:
-                self.log.info("No Ray cluster YAML provided, skipping cluster deletion")
-        except Exception as e:
-            self.log.error(f"Unexpected error during cleanup: {str(e)}")
+        if self.ray_cluster_yaml:
+            self.log.info(f"Attempting to delete Ray cluster using YAML: {self.ray_cluster_yaml}")
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None, self.hook.delete_ray_cluster, self.ray_cluster_yaml, self.gpu_device_plugin_yaml
+            )
+            self.log.info("Ray cluster deletion process completed")
+        else:
+            self.log.info("No Ray cluster YAML provided, skipping cluster deletion")
 
     async def _poll_status(self) -> None:
-        while not self._is_terminal_state():
+        self._job_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
+        while self._job_status not in TERMINAL_JOB_STATUSES:
+            self.log.info(f"Status of job {self.job_id} is: {self._job_status}")
             await asyncio.sleep(self.poll_interval)
+            self._job_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
 
     async def _stream_logs(self) -> None:
         """
@@ -111,46 +114,42 @@ class RayJobTrigger(BaseTrigger):
 
     async def run(self) -> AsyncIterator[TriggerEvent]:
         """
-        Asynchronously polls the job status and yields events based on the job's state.
+        Asynchronously polls the Ray job status and yields events based on the job's state.
 
         This method gets job status at each poll interval and streams logs if available.
         It yields a TriggerEvent upon job completion, cancellation, or failure.
 
         :yield: TriggerEvent containing the status, message, and job ID related to the job.
         """
-        try:
-            self.log.info(f"Polling for job {self.job_id} every {self.poll_interval} seconds...")
+        self.log.info(f"::group:: Trigger 1/2: Checking the job status")
+        self.log.info(f"Polling for job {self.job_id} every {self.poll_interval} seconds...")
 
+        try:
             tasks = [self._poll_status()]
             if self.fetch_logs:
                 tasks.append(self._stream_logs())
-
             await asyncio.gather(*tasks)
+        except ApiException as e:
+            error_msg = str(e)
+            self.log.info(f"::endgroup::")
+            self.log.error("::group:: Trigger unable to poll job status")
+            self.log.error("Exception details:", exc_info=True)
+            self.log.info("Attempting to clean up...")
+            await self.cleanup()
+            self.log.info("Cleanup completed!")
+            self.log.info(f"::endgroup::")
 
-            completed_status = self.hook.get_ray_job_status(self.dashboard_url, self.job_id)
-            self.log.info(f"Status of completed job {self.job_id} is: {completed_status}")
+            yield TriggerEvent({"status": "EXCEPTION", "message": error_msg, "job_id": self.job_id})
+        else:
+            self.log.info(f"::endgroup::")
+            self.log.info(f"::group:: Trigger 2/2: Job reached a terminal state")
+            self.log.info(f"Status of completed job {self.job_id} is: {self._job_status}")
+            self.log.info(f"::endgroup::")
+
             yield TriggerEvent(
                 {
-                    "status": completed_status,
-                    "message": f"Job {self.job_id} completed with status {completed_status}",
+                    "status": self._job_status,
+                    "message": f"Job {self.job_id} completed with status {self._job_status}",
                     "job_id": self.job_id,
                 }
             )
-        except Exception as e:
-            self.log.error(f"Error occurred: {str(e)}")
-            await self.cleanup()
-            yield TriggerEvent({"status": str(JobStatus.FAILED), "message": str(e), "job_id": self.job_id})
-
-    def _is_terminal_state(self) -> bool:
-        """
-        Checks if the Ray job is in a terminal state.
-
-        A terminal state is one of the following: SUCCEEDED, STOPPED, or FAILED.
-
-        :return: True if the job is in a terminal state, False otherwise.
-        """
-        return self.hook.get_ray_job_status(self.dashboard_url, self.job_id) in (
-            JobStatus.SUCCEEDED,
-            JobStatus.STOPPED,
-            JobStatus.FAILED,
-        )
