@@ -17,6 +17,7 @@ jobs:
       - run: true
 
   Static-Check:
+    needs: Authorize
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +31,7 @@ jobs:
       - run: hatch run tests.py3.11-2.9:static-check
 
   Run-Unit-Tests:
+    needs: Authorize
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -154,6 +156,7 @@ jobs:
     needs:
       - Run-Unit-Tests
       - Run-Integration-Tests
+      - Authorize
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
