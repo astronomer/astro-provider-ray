@@ -6,7 +6,7 @@ from typing import Any
 
 from airflow.models import BaseOperator
 from airflow.providers.cncf.kubernetes.utils.pod_manager import PodOperatorHookProtocol
-from airflow.utils.context import Context
+from airflow.utils.context import Context  # type: ignore[attr-defined]
 from kubernetes.client.exceptions import ApiException
 from ray.job_submission import JobStatus
 

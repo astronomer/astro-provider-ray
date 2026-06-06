@@ -10,9 +10,9 @@ from typing import Any, AsyncIterator
 
 import requests
 import yaml
-from airflow.exceptions import AirflowException
+from airflow.exceptions import AirflowException  # type: ignore[attr-defined]
 from airflow.providers.cncf.kubernetes.hooks.kubernetes import KubernetesHook
-from airflow.utils.context import Context
+from airflow.utils.context import Context  # type: ignore[attr-defined]
 from kubernetes import client, config
 from ray.job_submission import JobStatus, JobSubmissionClient
 
