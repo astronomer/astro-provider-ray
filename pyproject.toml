@@ -83,8 +83,9 @@ dependencies = [
     "pytest>=6.0",
     "pytest-cov",
     "pre-commit",
-    # provides pkg_resources, which nodeenv (used by pre-commit's node hooks) needs on py3.11+
-    "setuptools"
+    # provides pkg_resources, which nodeenv (pre-commit's node hooks) needs; pin <81 because
+    # setuptools 81+ removed pkg_resources (CI floated to 82.0.0 -> nodeenv ModuleNotFoundError)
+    "setuptools<81"
 ]
 pre-install-commands = ["sh scripts/test/pre-install-airflow.sh {matrix:airflow} {matrix:python}"]
 
