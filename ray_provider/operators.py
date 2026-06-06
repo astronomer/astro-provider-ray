@@ -5,7 +5,6 @@ from functools import cached_property
 from typing import Any
 
 from airflow.models import BaseOperator
-from airflow.providers.cncf.kubernetes.utils.pod_manager import PodOperatorHookProtocol
 from airflow.utils.context import Context  # type: ignore[attr-defined]
 from kubernetes.client.exceptions import ApiException
 from ray.job_submission import JobStatus
@@ -87,7 +86,7 @@ class DeleteRayCluster(BaseOperator):
         self.gpu_device_plugin_yaml = gpu_device_plugin_yaml
 
     @property
-    def hook(self) -> PodOperatorHookProtocol:
+    def hook(self) -> RayHook:
         """Lazily initialize and return the RayHook."""
         return RayHook(conn_id=self.conn_id)
 
@@ -193,7 +192,7 @@ class SubmitRayJob(BaseOperator):
         self._delete_cluster()
 
     @cached_property
-    def hook(self) -> PodOperatorHookProtocol:
+    def hook(self) -> RayHook:
         """Lazily initialize and return the RayHook."""
         return RayHook(conn_id=self.conn_id)
 
