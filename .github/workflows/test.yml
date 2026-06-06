@@ -36,12 +36,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-        airflow-version: ["2.7", "2.8", "2.9", "2.10"]
-        exclude:
-          - python-version: "3.12"
-            airflow-version: "2.7"
-          - python-version: "3.12"
-            airflow-version: "2.8"
+        # Airflow 2.7/2.8 dropped (EOL; their cncf-kubernetes 7.x lacks APIs RayHook uses).
+        airflow-version: ["2.9", "2.10"]
     steps:
       - uses: actions/checkout@v4
         with:

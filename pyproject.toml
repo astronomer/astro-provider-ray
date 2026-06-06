@@ -96,14 +96,18 @@ UV_CONSTRAINT = "/tmp/constraint.txt"
 
 [[tool.hatch.envs.tests.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
-airflow = ["2.7", "2.8", "2.9", "2.10"]
+# Airflow 2.7/2.8 dropped: their constraint-pinned cncf-kubernetes (7.x) lacks the
+# apps_v1_client/core_v1_client APIs RayHook uses, and both are EOL. (See astronomer-cosmos#2288.)
+airflow = ["2.9", "2.10"]
 
 [tool.hatch.envs.tests.scripts]
 freeze = "pip freeze"
 test = 'sh scripts/test/unit_test.sh'
 test-cov = 'sh scripts/test/unit_cov.sh'
 test-integration = 'sh scripts/test/integration_test.sh'
-static-check = "pre-commit run --all-files"
+# Unset the constraint vars here: they must scope the Airflow dependency install only, not
+# pre-commit's own hook environments (the constraint pins e.g. ruff, conflicting with the hooks).
+static-check = "env -u PIP_CONSTRAINT -u UV_CONSTRAINT pre-commit run --all-files"
 
 [tool.pytest.ini_options]
 filterwarnings = ["ignore::DeprecationWarning"]
