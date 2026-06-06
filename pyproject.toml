@@ -86,6 +86,14 @@ dependencies = [
 ]
 pre-install-commands = ["sh scripts/test/pre-install-airflow.sh {matrix:airflow} {matrix:python}"]
 
+[tool.hatch.envs.tests.env-vars]
+# Apply the Airflow constraint file (fetched by pre-install-airflow.sh) to every install in this
+# env so providers (cncf-kubernetes, standard, ...) resolve to versions compatible with the
+# pinned Airflow, rather than pulling incompatible latest releases (e.g. providers-standard that
+# requires a newer Airflow, which previously broke the integration env).
+PIP_CONSTRAINT = "/tmp/constraint.txt"
+UV_CONSTRAINT = "/tmp/constraint.txt"
+
 [[tool.hatch.envs.tests.matrix]]
 python = ["3.8", "3.9", "3.10", "3.11", "3.12"]
 airflow = ["2.7", "2.8", "2.9", "2.10"]
