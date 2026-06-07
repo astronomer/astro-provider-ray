@@ -82,9 +82,8 @@ dependencies = [
     "apache-airflow-providers-cncf-kubernetes",
     "pytest>=6.0",
     "pytest-cov",
-    "pre-commit",
-    # provides pkg_resources, which nodeenv (pre-commit's node hooks) needs; pin <81 because
-    # setuptools 81+ removed pkg_resources (CI floated to 82.0.0 -> nodeenv ModuleNotFoundError)
+    # the Airflow constraint file does not pin setuptools, so cap it here: 81+ removed pkg_resources,
+    # which parts of the Airflow/Ray stack still import at runtime.
     "setuptools<81"
 ]
 pre-install-commands = ["sh scripts/test/pre-install-airflow.sh {matrix:airflow} {matrix:python}"]
@@ -93,7 +92,9 @@ pre-install-commands = ["sh scripts/test/pre-install-airflow.sh {matrix:airflow}
 # Apply the Airflow constraint file (fetched by pre-install-airflow.sh) to every install in this
 # env so providers (cncf-kubernetes, standard, ...) resolve to versions compatible with the
 # pinned Airflow, rather than pulling incompatible latest releases (e.g. providers-standard that
-# requires a newer Airflow, which previously broke the integration env).
+# requires a newer Airflow, which previously broke the integration env). Scoped to this env only:
+# static checks run in the separate `static-check` env so the constraint never reaches pre-commit's
+# own hook tools (ruff, etc.).
 PIP_CONSTRAINT = "/tmp/constraint.txt"
 UV_CONSTRAINT = "/tmp/constraint.txt"
 
@@ -108,9 +109,22 @@ freeze = "pip freeze"
 test = 'sh scripts/test/unit_test.sh'
 test-cov = 'sh scripts/test/unit_cov.sh'
 test-integration = 'sh scripts/test/integration_test.sh'
-# Unset the constraint vars here: they must scope the Airflow dependency install only, not
-# pre-commit's own hook environments (the constraint pins e.g. ruff, conflicting with the hooks).
-static-check = "env -u PIP_CONSTRAINT -u UV_CONSTRAINT pre-commit run --all-files"
+
+# Static checks live in their own detached env (no Airflow, no PIP_CONSTRAINT) so the Airflow
+# constraint file never reaches pre-commit's own hook tools. pre-commit manages each hook's deps
+# in isolated environments, so the project itself does not need to be installed here.
+[tool.hatch.envs.static-check]
+detached = true
+dependencies = [
+    "pre-commit",
+    # provides pkg_resources, which nodeenv (pre-commit's node-based hooks, e.g. markdown-link-check)
+    # needs; pin <81 because setuptools 81+ removed pkg_resources (CI floated to 82.0.0 -> nodeenv
+    # ModuleNotFoundError).
+    "setuptools<81"
+]
+
+[tool.hatch.envs.static-check.scripts]
+run = "pre-commit run --all-files"
 
 [tool.pytest.ini_options]
 filterwarnings = ["ignore::DeprecationWarning"]
