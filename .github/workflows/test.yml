@@ -181,6 +181,9 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          fail_ci_if_error: true
+          # Don't fail CI on Codecov-side errors. The uploader's GPG verification-key import fails
+          # intermittently (codecov/codecov-action#1876), which otherwise red-lines this unrelated
+          # coverage-upload job. Signature verification stays on; only the hard failure is relaxed.
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.xml
