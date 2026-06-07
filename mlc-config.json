@@ -7,6 +7,9 @@
   "ignorePatterns": [
     {
       "pattern": "^http://localhost:"
+    },
+    {
+      "pattern": "^https://join\\.slack\\.com/"
     }
   ],
   "retryCount": 5,
