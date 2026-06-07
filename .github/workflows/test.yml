@@ -54,7 +54,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install packages and dependencies
         run: |
-          python -m pip install hatch
+          # Pin virtualenv<21 on this matrix: py3.8/3.9 can only install old hatch (<=1.15.1; newer
+          # hatch needs py3.10+), which predates the virtualenv-21 fix (hatch#2193) and crashes on env
+          # creation ("module 'virtualenv.discovery.builtin' has no attribute 'propose_interpreters'").
+          # Harmless on py3.10+ (they get hatch 1.17+). Drop this once py3.8/3.9 leave the matrix.
+          python -m pip install hatch "virtualenv<21"
           hatch -e tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }} run pip freeze
       - name: Test Ray against Airflow ${{ matrix.airflow-version }} and Python ${{ matrix.python-version }}
         run: |
