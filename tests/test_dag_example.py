@@ -27,7 +27,7 @@ def get_dags(dag_folder=None):
 
 @pytest.fixture(scope="module")
 def setup_airflow_db():
-    os.system("airflow db init")
+    os.system("airflow db migrate")
     conn_id = "ray_conn"
     # Explicitly create the tables if necessary
     create_default_connections()
