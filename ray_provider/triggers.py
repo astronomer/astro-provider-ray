@@ -139,14 +139,14 @@ class RayJobTrigger(BaseTrigger):
             self.log.info("Cleanup completed!")
             self.log.info(f"::endgroup::")
 
-            yield TriggerEvent({"status": "EXCEPTION", "message": error_msg, "job_id": self.job_id})
+            yield TriggerEvent({"status": "EXCEPTION", "message": error_msg, "job_id": self.job_id})  # type: ignore[no-untyped-call]
         else:
             self.log.info(f"::endgroup::")
             self.log.info(f"::group:: Trigger 2/2: Job reached a terminal state")
             self.log.info(f"Status of completed job {self.job_id} is: {self._job_status}")
             self.log.info(f"::endgroup::")
 
-            yield TriggerEvent(
+            yield TriggerEvent(  # type: ignore[no-untyped-call]
                 {
                     "status": self._job_status,
                     "message": f"Job {self.job_id} completed with status {self._job_status}",
