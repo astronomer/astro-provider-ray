@@ -10,9 +10,9 @@ from typing import Any, AsyncIterator
 
 import requests
 import yaml
-from airflow.exceptions import AirflowException
+from airflow.exceptions import AirflowException  # type: ignore[attr-defined]
 from airflow.providers.cncf.kubernetes.hooks.kubernetes import KubernetesHook
-from airflow.utils.context import Context
+from airflow.utils.context import Context  # type: ignore[attr-defined]
 from kubernetes import client, config
 from ray.job_submission import JobStatus, JobSubmissionClient
 
@@ -98,6 +98,9 @@ class RayHook(KubernetesHook):  # type: ignore
         self.in_cluster: bool | None = None
         self.client_configuration = None
         self.config_file = None
+        # config_dict was added to KubernetesHook in newer cncf-kubernetes providers; set it
+        # here (like the other kube-config attrs) so RayHook works on old and new versions.
+        self.config_dict: dict[str, Any] | None = None
         self.disable_verify_ssl = None
         self.disable_tcp_keepalive = None
         self._is_in_cluster: bool | None = None
@@ -168,7 +171,7 @@ class RayHook(KubernetesHook):  # type: ignore
         return self.ray_client_instance
 
     def submit_ray_job(
-        self, dashboard_url: str, entrypoint: str, runtime_env: dict[str, Any] | None = None, **job_config: Any
+        self, dashboard_url: str | None, entrypoint: str, runtime_env: dict[str, Any] | None = None, **job_config: Any
     ) -> str:
         """
         Submits a job to the Ray cluster.
