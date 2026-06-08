@@ -11,4 +11,6 @@ mv /tmp/constraint.txt.tmp /tmp/constraint.txt
 # Install Airflow with constraints
 pip install apache-airflow==$AIRFLOW_VERSION --constraint /tmp/constraint.txt
 pip install pydantic --constraint /tmp/constraint.txt
-rm /tmp/constraint.txt
+# Keep /tmp/constraint.txt: the tests env sets PIP_CONSTRAINT/UV_CONSTRAINT to it so the
+# subsequent dependency install resolves providers (cncf-kubernetes, standard, ...) to
+# versions compatible with this Airflow version instead of pulling incompatible latest ones.
