@@ -10,13 +10,13 @@ from pathlib import Path
 from typing import Any, Callable
 
 from airflow.decorators.base import DecoratedOperator, TaskDecorator, task_decorator_factory
-from airflow.utils.context import Context
+from airflow.utils.context import Context  # type: ignore[attr-defined]
 
 from ray_provider.exceptions import RayAirflowException
 from ray_provider.operators import SubmitRayJob
 
 
-class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):
+class _RayDecoratedOperator(DecoratedOperator, SubmitRayJob):  # type: ignore[misc]
     """
     A custom Airflow operator for Ray tasks.
 
