@@ -64,7 +64,7 @@ jobs:
         run: |
           hatch run tests.py${{ matrix.python-version }}-${{ matrix.airflow-version }}:test-cov
       - name: Upload coverage to Github
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-unit-test-${{ matrix.python-version }}-${{ matrix.airflow-version }}
           path: .coverage
@@ -141,7 +141,7 @@ jobs:
           RAY_SPEC_FILENAME: "ray-gke.yaml"
 
       - name: Upload coverage to Github
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-integration-test-${{ matrix.python-version }}-${{ matrix.airflow-version }}
           path: .coverage
