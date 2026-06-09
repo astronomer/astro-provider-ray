@@ -179,7 +179,7 @@ jobs:
           coverage report
           coverage xml
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6.0.1
         with:
           # Don't fail CI on Codecov-side errors. The uploader's GPG verification-key import fails
           # intermittently (codecov/codecov-action#1876), which otherwise red-lines this unrelated
