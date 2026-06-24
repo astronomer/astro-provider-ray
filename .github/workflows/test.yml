@@ -20,7 +20,7 @@ jobs:
     needs: Authorize
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: actions/setup-python@v6
@@ -39,7 +39,7 @@ jobs:
         # Airflow 2.7/2.8 dropped (EOL; their cncf-kubernetes 7.x lacks APIs RayHook uses).
         airflow-version: ["2.9", "2.10"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: actions/cache@v5
@@ -81,7 +81,7 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - uses: actions/cache@v5
@@ -159,7 +159,7 @@ jobs:
       - Authorize
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
       - name: Set up Python 3.11
