@@ -1,6 +1,24 @@
 Welcome to the Ray provider documentation!
 ======================================
 
+.. warning::
+    **Discontinuation of project.** This project is no longer actively maintained by Astronomer.
+    Development has been paused and we are not accepting new contributions, bug fixes or releases.
+    The code is kept here for historical purposes; it may not work with the latest dependencies or
+    platforms and could contain security vulnerabilities, so Astronomer can't offer guarantees or
+    warranties for its use.
+
+    If you run Ray on Google Cloud, the official Apache Airflow Google provider
+    (``apache-airflow-providers-google``) ships Ray operators that cover a subset of this provider:
+    cluster lifecycle on Vertex AI (``CreateRayClusterOperator``, ``ListRayClustersOperator``,
+    ``GetRayClusterOperator``, ``UpdateRayClusterOperator``, ``DeleteRayClusterOperator``) and Ray job
+    management (``RaySubmitJobOperator``, ``RayStopJobOperator``, ``RayDeleteJobOperator``,
+    ``RayGetJobInfoOperator``, ``RayListJobsOperator``). This provider is Kubernetes-generic, so the
+    Google operators are a Google Cloud-specific alternative, not a drop-in replacement.
+
+    If you're interested in adopting or stewarding this project, reach us at oss@astronomer.io.
+    Thanks for being part of the open-source journey and helping keep great ideas alive!
+
 .. toctree::
    :hidden:
    :maxdepth: 1
