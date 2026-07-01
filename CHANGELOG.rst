@@ -12,6 +12,13 @@ CHANGELOG
   ``DeprecationWarning`` on import. Google Cloud users can use the Ray operators available in the
   official Apache Airflow Google provider (``apache-airflow-providers-google``). by @pankajkoti.
 
+**Others**
+
+* Fix CI: resolve static check, unit and integration test failures on ``main`` by @tatiana in `#141 <https://github.com/astronomer/astro-provider-ray/pull/141>`_.
+* Add a 7-day Dependabot cooldown by @tatiana in `#140 <https://github.com/astronomer/astro-provider-ray/pull/140>`_.
+* Simplify CI authorization: add and later remove the Authorize job across the CI, docs and release workflows, and switch tests to the ``pull_request`` event by @pankajastro and @pankajkoti in #128, #129, #130, #131.
+* Bump GitHub Actions by @dependabot in #134, #135, #136, #137, #138, #144, #146, #148.
+
 0.3.1 (2025-03-25)
 ------------------
 
