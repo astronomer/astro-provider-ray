@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+0.4.0 (2026-07-01)
+------------------
+
+**Deprecations**
+
+* Deprecate the ``astro-provider-ray`` project. The provider is no longer actively maintained by
+  Astronomer: development has been paused and we are not accepting new contributions, bug fixes or
+  releases. The project is marked inactive (``Development Status :: 7 - Inactive``) and now emits a
+  ``DeprecationWarning`` on import. Google Cloud users can use the Ray operators available in the
+  official Apache Airflow Google provider (``apache-airflow-providers-google``). by @pankajkoti.
+
 0.3.1 (2025-03-25)
 ------------------
 

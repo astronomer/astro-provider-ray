@@ -6,8 +6,9 @@ build-backend = "hatchling.build"
 name = "astro-provider-ray"
 authors = [{ name = "Astronomer", email = "humans@astronomer.io" }]
 license = { text = "Apache License 2.0" }
-description = "An Apache Airflow provider package built by Astronomer to integrate with Ray."
+description = "[DEPRECATED - no longer maintained] An Apache Airflow provider package built by Astronomer to integrate with Ray."
 classifiers = [
+    "Development Status :: 7 - Inactive",
     "Framework :: Apache Airflow",
     "Framework :: Apache Airflow :: Provider",
     "Intended Audience :: Developers",
